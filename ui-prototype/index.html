@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Data Communications Simulator – UI prototype</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <aside>
+        <div class="brand">
+            <div class="logo">01</div>
+            <div>Data Comms Lab<small>Follow one message end to end</small></div>
+        </div>
+        <button class='btn ghost' id='dashBtn' style='display:block'>Dashboard</button>
+        <p class='side-note'>Core lab, working now</p>
+        <nav id='nav' aria-label='Core lab stages'></nav>
+        <p class='side-note'>Coming in later phases</p>
+        <div id='nav2'></div>
+        <div class="stats">
+            <div class="stat"><b id="n1">0</b><span>bytes</span></div>
+            <div class="stat"><b id="n2">0</b><span>packets</span></div>
+            <div class="stat"><b id="n3">0</b><span>retries</span></div>
+        </div>
+        <div class="link" id="link">
+            <div class="row"><span class="led"></span><span id="ls">Link is up</span></div><button class="btn ghost"
+                id="lb" style="display:block">Take link down</button>
+        </div>
+    </aside>
+    <main>
+        <section class="stage on" id="s0">
+            <div class="head">
+                <h2>Turn words into bytes</h2>
+                <p>Every character becomes one or more UTF-8 bytes. Each lit square below is a 1 bit, and each dark
+                    square is a 0 bit.</p>
+            </div>
+            <div class="panel"><label for="msg">Your message</label><textarea id="msg">Hello, 世界</textarea></div>
+            <div class="panel">
+                <h3>Byte lab</h3>
+                <p class="hint" id="bsum"></p>
+                <div class="bytes" id="bytes"></div>
+            </div>
+            <div class="foot"><span></span><button class="btn" data-go="1">Split into packets</button></div>
+        </section>
+
+        <section class="stage" id="s1">
+            <div class="head">
+                <h2>Cut the stream into packets</h2>
+                <p>Drag the slider to change how many bytes fit in one packet. Hover a packet to see which bytes it
+                    carries.</p>
+            </div>
+            <div class="panel"><label for="ps">Maximum payload: <b id="psv"></b> bytes per packet</label><input id="ps"
+                    type="range" min="1" max="8" value="3"></div>
+            <div class="panel">
+                <h3>Byte stream</h3>
+                <p class="hint">Same colour means same packet.</p>
+                <div class="chips" id="pstream"></div>
+            </div>
+            <div class="panel">
+                <h3>Packets</h3>
+                <p class="hint">Each has a header the receiver can read and a payload slice.</p>
+                <div class="packets" id="pk"></div>
+            </div>
+            <div class="foot"><button class="btn ghost" data-go="0">Back</button><button class="btn" data-go="2">Go to
+                    the link</button></div>
+        </section>
+
+        <section class="stage" id="s2">
+            <div class="head">
+                <h2>Send it across a shaky link</h2>
+                <p>The sender waits for an ACK after every packet. If a packet is lost, it sends it again, up to 3
+                    retries.</p>
+            </div>
+            <div class="panel">
+                <div class="controls">
+                    <div><label for="ord">Delivery order</label><select id="ord">
+                            <option value="n">In sequence</option>
+                            <option value="r">Reverse order</option>
+                        </select></div>
+                    <div><label for="loss">Packet loss probability</label><select id="loss">
+                            <option value="0">0% (perfect)</option>
+                            <option value="10">10%</option>
+                            <option value="30" selected>30%</option>
+                            <option value="50">50%</option>
+                        </select></div><button class="btn" id="go">Transmit packets</button>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="path">
+                    <div class="node">
+                        <h3>Sender</h3>
+                        <p id="sp">Ready</p>
+                        <div class="mini" id="sq"></div>
+                    </div>
+                    <div class="wire">
+                        <div class="fly" id="pkt">P1</div>
+                        <div class="fly" id="ack">ACK 1</div>
+                    </div>
+                    <div class="node">
+                        <h3>Receiver</h3>
+                        <p id="rp">Waiting</p>
+                        <div class="mini" id="rq"></div>
+                    </div>
+                </div>
+                <div class="status" id="st">Press Transmit to start.</div>
+            </div>
+            <div class="panel">
+                <h3>Event log</h3>
+                <ul class="log" id="log">
+                    <li><span class="tag">INFO</span>Nothing sent yet.</li>
+                </ul>
+            </div>
+            <div class="foot"><button class="btn ghost" data-go="1">Back</button><button class="btn" data-go="3">See
+                    what arrived</button></div>
+        </section>
+
+        <section class="stage" id="s3">
+            <div class="head">
+                <h2>Rebuild the message</h2>
+                <p>The receiver puts packets in order by sequence number, joins the bytes, and decodes them as UTF-8.
+                </p>
+            </div>
+            <div class="panel empty" id="rEmpty">
+                <p>No transmission yet. Send the packets first.</p><button class="btn" data-go="2">Go to the
+                    link</button>
+            </div>
+            <div id="rBody">
+                <div class="cols">
+                    <div class="panel">
+                        <h3>Arrival order</h3>
+                        <p class="hint">Order packets reached the receiver.</p>
+                        <ul class="log" id="arr"></ul>
+                    </div>
+                    <div class="panel">
+                        <h3>Slots by sequence number</h3>
+                        <p class="hint" id="rc"></p>
+                        <div class="slots" id="slots"></div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3>Reassembled message</h3>
+                    <p class="hint">&nbsp;</p>
+                    <div class="result" id="res"></div>
+                </div>
+            </div>
+            <div class="foot"><button class="btn ghost" data-go="2">Back</button><button class="btn ghost"
+                    data-go="0">Start over</button></div>
+        </section>
+        <section class='stage' id='sD'>
+            <div class='head'>
+                <h2>Welcome back</h2>
+                <p>Pick up where you left off, or explore the next layer of the network stack.</p>
+            </div>
+            <div class='panel cont'>
+                <div>
+                    <h3>Continue: Transmission Lab</h3>
+                    <p class='hint'>Your last run sent 4 packets with 1 retry.</p>
+                    <div class='bar'><i style='width:50%'></i></div>
+                    <p class='hint' style='margin:0'>Core lab progress: 2 of 4 stages complete</p>
+                </div><button class='btn' onclick='go(2)'>Resume</button>
+            </div>
+            <div class='panel'>
+                <h3>Learning path</h3>
+                <p class='hint'>Each layer builds on the one below it.</p>
+                <div class='lpath'><span class='step done'>Message</span><span class='step done'>Packets</span><span
+                        class='step cur'>Link</span><span class='step'>Reliability</span><span
+                        class='step'>Network</span><span class='step'>Transport</span><span
+                        class='step'>Application</span><span class='step'>Advanced</span></div>
+            </div>
+            <div class='panel'>
+                <h3>All modules</h3>
+                <p class='hint'>Live modules work today. Planned ones show their intended layout and the existing code
+                    they will reuse.</p>
+                <div class='dgrid' id='mods'></div>
+            </div>
+            <div class='cols'>
+                <div class='panel'>
+                    <h3>Recently explored</h3>
+                    <ul class='ul'>
+                        <li>Transmission Lab, 30% loss</li>
+                        <li>Packetization, 3-byte payloads</li>
+                        <li>Message &amp; Encoding, mixed scripts</li>
+                    </ul>
+                </div>
+                <div class='panel'>
+                    <h3>Suggested experiments</h3>
+                    <ul class='ul'>
+                        <li>Send the same message at 0% and 50% loss</li>
+                        <li>Deliver in reverse order and watch the slots</li>
+                        <li>Compare payload sizes of 1 and 8 bytes</li>
+                    </ul>
+                </div>
+            </div>
+            <div class='cols'>
+                <div class='panel'>
+                    <h3>Progress and achievements</h3>
+                    <p class='hint'>4 live, 20 mockups</p>
+                    <div class='bar'><i style='width:17%'></i></div>
+                    <div class='badges'>
+                        <div class='badge'><i>1</i>First packet</div>
+                        <div class='badge'><i>↺</i>Survived a retry</div>
+                        <div class='badge lock'><i>?</i>Perfect delivery</div>
+                        <div class='badge lock'><i>?</i>Subnet master</div>
+                    </div>
+                </div>
+                <div class='panel'>
+                    <h3>Glossary and reference</h3>
+                    <p class='hint'>Search is a placeholder for now.</p><input type='search'
+                        placeholder='Search terms like ACK, CRC, TTL' disabled>
+                    <div class='chips'><span class='chip c0'>ACK</span><span class='chip c1'>CRC</span><span
+                            class='chip c2'>TTL</span><span class='chip c3'>MSS</span></div>
+                </div>
+            </div>
+        </section>
+        <section class='stage' id='sF'>
+            <div class='head'>
+                <h2>Mark where frames start and end</h2>
+                <p>A receiver needs to know where one frame stops. Three common methods, shown with sample data.</p>
+            </div>
+            <div class='panel'>
+                <div class='lpath'><button class='step cur' data-t='f1'>Length count</button><button class='step'
+                        data-t='f2'>Byte stuffing</button><button class='step' data-t='f3'>Bit stuffing</button></div>
+                <div class='tp' data-p='f1'>
+                    <p class='hint'>A length field at the start says how many bytes follow. This frame carries “Hello”.
+                    </p>
+                    <div class='chips' id='f1a'></div>
+                    <div class='stats wide'>
+                        <div class='stat'><b>5</b><span>bytes in</span></div>
+                        <div class='stat'><b>6</b><span>bytes out</span></div>
+                        <div class='stat'><b>+1</b><span>overhead</span></div>
+                    </div>
+                </div>
+                <div class='tp' data-p='f2' hidden>
+                    <p class='hint'>Flag bytes mark the edges. If the data itself contains a flag or escape byte, an
+                        escape is added in front of it.</p>
+                    <p class='hint' style='margin-top:0'>Before</p>
+                    <div class='chips' id='f2a'></div>
+                    <p class='hint'>After</p>
+                    <div class='chips' id='f2b'></div>
+                    <div class='stats wide'>
+                        <div class='stat'><b>5</b><span>bytes in</span></div>
+                        <div class='stat'><b>9</b><span>bytes out</span></div>
+                        <div class='stat'><b>+4</b><span>2 flags, 2 escapes</span></div>
+                    </div>
+                </div>
+                <div class='tp' data-p='f3' hidden>
+                    <p class='hint'>After five 1s in a row, the sender inserts a 0, so the frame flag 01111110 can never
+                        appear inside the data.</p>
+                    <p class='hint' style='margin-top:0'>Before</p>
+                    <div class='chips' id='f3a'></div>
+                    <p class='hint'>After</p>
+                    <div class='chips' id='f3b'></div>
+                    <div class='stats wide'>
+                        <div class='stat'><b>16</b><span>bits in</span></div>
+                        <div class='stat'><b>18</b><span>bits out</span></div>
+                        <div class='stat'><b>+2</b><span>stuffed 0s</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class='foot'><button class='btn ghost' onclick='dash()'>Back to dashboard</button><span></span></div>
+        </section>
+        <section class='stage' id='sE'>
+            <div class='head'>
+                <h2>Catch errors before they spread</h2>
+                <p>The sender adds check data. The receiver recomputes it and compares. Sample values only.</p>
+            </div>
+            <div class='panel'>
+                <h3>Error injection</h3>
+                <p class='hint' style='margin-top:2px'>Preview only. These controls will flip bits in the sent data.</p>
+                <div class='controls'>
+                    <div><label for='ef'>Bits to flip</label><select id='ef'>
+                            <option>1 bit</option>
+                            <option>2 bits</option>
+                            <option>Burst of 4 bits</option>
+                        </select></div>
+                    <div><label for='ep'>Position</label><select id='ep'>
+                            <option>Bit 3</option>
+                            <option>Random</option>
+                        </select></div><button class='btn'>Inject error</button>
+                </div>
+            </div>
+            <div class='panel'>
+                <div class='lpath'><button class='step cur' data-t='e1'>Parity</button><button class='step'
+                        data-t='e2'>Checksum</button><button class='step' data-t='e3'>CRC</button></div>
+                <div class='tp' data-p='e1'>
+                    <p class='hint'>Even parity: one extra bit makes the count of 1s even. Sent byte is 01001000, parity
+                        bit last.</p>
+                    <p class='hint' style='margin-top:0'>Sent</p>
+                    <div class='chips' id='e1a'></div>
+                    <p class='hint'>Received, 1 bit flipped</p>
+                    <div class='chips' id='e1b'></div>
+                    <div class='verdict c2'><b>Error detected.</b> The received bits hold three 1s, which is odd.</div>
+                    <p class='hint'>Received, 2 bits flipped</p>
+                    <div class='chips' id='e1c'></div>
+                    <div class='verdict c1'><b>Not detected.</b> Two flips cancel out, so the count of 1s stays even.
+                    </div>
+                </div>
+                <div class='tp' data-p='e2' hidden>
+                    <p class='hint'>The sender adds the bytes and sends the inverted sum. The receiver’s total should
+                        come out as 0xFF.</p>
+                    <p class='hint' style='margin-top:0'>Sent: data 48 65, checksum 52</p>
+                    <div class='chips' id='e2a'></div>
+                    <p class='hint'>Received, first byte corrupted</p>
+                    <div class='chips' id='e2b'></div>
+                    <div class='verdict c2'><b>Error detected.</b> Data and checksum add up to 0x10, not 0xFF.</div>
+                </div>
+                <div class='tp' data-p='e3' hidden>
+                    <p class='hint'>A CRC treats the data as one long number and divides it by a fixed polynomial. The
+                        remainder is sent along.</p>
+                    <p class='hint' style='margin-top:0'>Sent: data 48, CRC-8 ff</p>
+                    <div class='chips' id='e3a'></div>
+                    <p class='hint'>Received, first byte corrupted</p>
+                    <div class='chips' id='e3b'></div>
+                    <div class='verdict c2'><b>Error detected.</b> The receiver’s remainder is not zero.</div>
+                    <div class='verdict c3'><b>Illustrative values.</b> The real CRC logic will replace this sample.
+                    </div>
+                </div>
+            </div>
+            <div class='foot'><button class='btn ghost' onclick='dash()'>Back to dashboard</button><span></span></div>
+        </section>
+        <section class='stage' id='sJ'>
+            <div class='head'>
+                <h2>One message, end to end</h2>
+                <p>Follow “Hi” from your keyboard to the receiver. Sample data only.</p>
+            </div>
+            <div class='panel'>
+                <h3>Stage timeline</h3>
+                <p class='hint' id='jc' style='margin-top:2px'></p>
+                <div class='bar'><i id='jb'></i></div>
+                <div class='lpath' id='jt'></div>
+            </div>
+            <div class='panel'>
+                <h3 id='jn'></h3>
+                <p class='hint' id='jr' style='margin-top:2px'></p>
+                <div class='blks' id='jv'></div>
+            </div>
+            <div class='cols'>
+                <div class='panel'>
+                    <h3>Representation inspector</h3>
+                    <ul class='ul' id='ji'></ul>
+                </div>
+                <div class='panel'>
+                    <h3>What’s happening</h3>
+                    <p id='je' style='color:var(--muted);margin:6px 0 0'></p>
+                </div>
+            </div>
+            <div class='foot'><button class='btn ghost' id='jp'>Previous stage</button><button class='btn' id='jx'>Next
+                    stage</button></div>
+        </section>
+        <section class='stage' id='sX'>
+            <div class='head'>
+                <h2 id='xt'></h2>
+                <p id='xd'></p>
+            </div>
+            <div class='panel' id='xb'></div>
+            <div class='panel'>
+                <h3>Integration map</h3>
+                <p class='hint' style='margin-top:2px'>Static sample data. Controls show intended behavior and run no
+                    protocol logic yet.</p>
+                <p class='mono' id='xr' style='color:var(--mint);margin:0'></p>
+            </div>
+            <div class='foot'><button class='btn ghost' onclick='dash()'>Back to dashboard</button><span></span></div>
+        </section>
+        <section class='stage' id='sM'>
+            <div class='head'>
+                <h2 id='mT'></h2>
+                <p id='mD'></p>
+            </div>
+            <div class='panel'>
+                <h3>Status</h3>
+                <p class='hint' id='mP'></p>
+                <div class='chips'><span class='chip c3'>Placeholder</span><span class='chip c0'>Idle</span><span
+                        class='chip c3'>Running</span><span class='chip c2'>Success</span><span
+                        class='chip c1'>Failure</span></div>
+            </div>
+            <div class='cols'>
+                <div class='panel'>
+                    <h3>Learning objectives</h3>
+                    <ul class='ul' id='mO'></ul>
+                </div>
+                <div class='panel'>
+                    <h3>Planned layout</h3>
+                    <ul class='ul' id='mU'></ul>
+                </div>
+            </div>
+            <div class='panel'>
+                <h3>Integration map</h3>
+                <p class='hint'>Existing code this screen will build on.</p>
+                <p class='mono' id='mR' style='color:var(--mint);margin:0'></p>
+            </div>
+            <div class='panel ph'>Preview area: this module’s visualization will appear here.</div>
+            <div class='foot'><button class='btn ghost' onclick='dash()'>Back to dashboard</button><span></span></div>
+        </section>
+    </main>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
