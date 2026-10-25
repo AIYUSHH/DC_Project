@@ -1,155 +1,315 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Communications Simulator</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-
-<body>
-    <h1>Data Communications Simulator</h1>
-
-    <p>
-        Understand what happens when a message travels across the network.
-    </p>
-    <p id="connection-status" class="connected">
-        Connected
-    </p>
-    <button id="connection-button">
-        Disconnect
-    </button>
-    <section id="message-editor">
-        <h2 class="encoding-lab">
-            Message Encoding Lab
-        </h2>
-        <p class="encode-info">
-            Here, you will come to know about how
-            character encoding works, from UTF-8 to binary.
-        </p>
-        <label for="message-input">
-            Your message
-        </label>
-        <textarea id="message-input" placeholder="Enter Message"></textarea>
-        <button id="finish-message">
-            Finish Message
-        </button>
-        <p id="encodingout">
-
-        </p>
-        <p id="binary-output">
-
-        </p>
-        <div id="byte-visualiser">
-
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="An interactive data communications lab: follow one message from text to bytes, packets, frames and back, with working simulators for every layer."
+    />
+    <title>Data Comms Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+    />
+    <!-- Stylesheets: loaded in this order on purpose. Later files can override earlier ones (the "cascade"). -->
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+    <link rel="stylesheet" href="css/lab.css" />
+    <link rel="stylesheet" href="css/modules.css" />
+    <link rel="stylesheet" href="css/learning.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+    <script>
+      try {
+        var t = JSON.parse(localStorage.getItem("dcl.v2") || "{}").theme;
+        if (t) document.documentElement.dataset.theme = t;
+        else if (matchMedia("(prefers-color-scheme: light)").matches)
+          document.documentElement.dataset.theme = "light";
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#view">Skip to content</a>
+    <div class="app">
+      <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">01</div>
+          <div class="brand-t">
+            Data Comms Lab<small>Follow one message end to end</small>
+          </div>
         </div>
-    </section>
-    <section id="operation-selection" hidden>
-        <h2>Choose Your Next Step</h2>
-        <p>Select an operation to explore.</p>
-
-        <button id="source-encoding-button">
-            Source Encoding
-        </button>
-
-        <button id="compression-button">
-            Compression
-        </button>
-
-        <button id="encryption-button">
-            Encryption
-        </button>
-
-        <button id="packetization-button">
-            Packetization
-        </button>
-    </section>
-
-    <section id="source-encoding-view" hidden>
-        <h2>Source Encoding in Action</h2>
-        <p>
-            Watch how each character is converted into UTF-8 bytes.
-        </p>
-
-        <div id="encoding-animation"></div>
-
-        <button id="encoding-back-button">
-            Back to Operations
-        </button>
-    </section>
-
-    <section id="packetization-view" hidden>
-        <h2>Packetization Lab</h2>
-        <p>Explore how encoded message bytes are divided into packets.</p>
-        <h3>Encoded Byte Stream</h3>
-        <div id="byte-stream"></div>
-        <label for="payload-size">
-            Maximum Payload Size for a Packet
-        </label>
-        <input type="number" id="payload-size" min="1" value="2">
-        <button id="create-packets-button">
-            Create Packets
-        </button>
-        <div id="packet-output">
-
+        <nav id="nav" aria-label="Lab sections"></nav>
+        <div class="link" id="link">
+          <div class="row">
+            <span class="led" aria-hidden="true"></span
+            ><span id="ls">Link is up</span>
+          </div>
+          <button class="btn ghost sm" id="lb" aria-pressed="false">
+            Take link down
+          </button>
         </div>
-        <div id="transmission-view">
-            <div class="network-node" id="sender">
-                <h3>Sender</h3>
-                <p>Ready to transmit</p>
+      </aside>
+      <div class="scrim" id="scrim"></div>
+
+      <div class="main">
+        <header class="topbar">
+          <button
+            class="icon-btn menu"
+            id="menuBtn"
+            aria-label="Open navigation"
+          >
+            <svg
+              class="ic"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div class="crumbs" id="crumbs" aria-label="Breadcrumb"></div>
+          <div class="top-stats" aria-label="Current run totals">
+            <span class="tstat"><b id="n1">0</b> bytes</span
+            ><span class="tstat"><b id="n2">0</b> packets</span
+            ><span class="tstat"><b id="n3">0</b> retries</span>
+          </div>
+          <button
+            class="icon-btn"
+            id="themeBtn"
+            aria-label="Switch theme"
+          ></button>
+        </header>
+
+        <main id="view" tabindex="-1">
+          <!-- ============ Core lab ============ -->
+          <section class="stage" id="s0">
+            <div class="head">
+              <div class="eyebrow">Core lab · Step 1 of 4</div>
+              <h2>Turn words into bytes</h2>
+              <p>
+                Every character becomes one or more UTF-8 bytes. In the byte
+                cards, each lit square is a 1 bit and each dark square is a 0
+                bit.
+              </p>
             </div>
-
-
-            <div id="network-path">
-                <div id="travelling-packet">
-                    <span id="travelling-packet-label">P1</span>
-                </div>
-
-                <div id="travelling-ack">
-                    <span id="travelling-ack-label">ACK 1</span>
-                </div>
+            <div class="panel">
+              <div class="field">
+                <label for="msg">Your message</label
+                ><textarea
+                  id="msg"
+                  rows="2"
+                  maxlength="120"
+                  spellcheck="false"
+                ></textarea>
+              </div>
+              <div
+                class="presets"
+                id="presets"
+                aria-label="Sample messages"
+              ></div>
+              <div class="stats" id="mstats"></div>
             </div>
-
-            <div class="network-node" id="receiver">
-                <h3>Receiver</h3>
-                <p>Waiting for packets</p>
+            <div class="panel">
+              <h3>Byte lab</h3>
+              <p class="hint" id="bsum"></p>
+              <div class="bytes" id="bytes"></div>
             </div>
+            <div class="foot">
+              <span></span
+              ><a class="btn" href="#/lab/1">Split into packets →</a>
+            </div>
+          </section>
 
-            <label for="delivery-order">Packet Delivery Order</label>
-            <select id="delivery-order">
-                <option value="normal">In sequence</option>
-                <option value="reverse">Reverse order</option>
-            </select>
+          <section class="stage" id="s1">
+            <div class="head">
+              <div class="eyebrow">Core lab · Step 2 of 4</div>
+              <h2>Cut the stream into packets</h2>
+              <p>
+                Drag the slider to change how many bytes fit in one packet.
+                Hover or focus a packet to see which bytes it carries.
+              </p>
+            </div>
+            <div class="panel">
+              <div class="field">
+                <label for="ps"
+                  >Maximum payload: <b id="psv"></b> bytes per packet</label
+                ><input id="ps" type="range" min="1" max="8" value="3" />
+              </div>
+              <div class="stats" id="pstats"></div>
+            </div>
+            <div class="panel">
+              <h3>Byte stream</h3>
+              <p class="hint">The same colour means the same packet.</p>
+              <div class="chips" id="pstream"></div>
+            </div>
+            <div class="panel">
+              <h3>Packets</h3>
+              <p class="hint">
+                Each packet has a header the receiver can read, a payload slice,
+                and a CRC-8 trailer so damage can be detected.
+              </p>
+              <div class="packets" id="pk"></div>
+            </div>
+            <div class="foot">
+              <a class="btn ghost" href="#/lab/0">← Back</a
+              ><a class="btn" href="#/lab/2">Go to the link →</a>
+            </div>
+          </section>
 
-            <label for="packet-loss">Packet Loss Probability</label>
-            <select id="packet-loss">
-                <option value="0">0% — No loss</option>
-                <option value="10">10%</option>
-                <option value="30">30%</option>
-                <option value="50">50%</option>
-            </select>
-
-            <button id="transmit-packets-button">
-                Transmit Packets
-            </button>
-
-            <div id="transmission-status"></div>
-
-            <section id="receiver-output">
-                <h3>Receiver: Reassembled Message</h3>
-                <p id="receiver-progress">Waiting for incoming packets...</p>
-
-                <div id="received-packets"></div>
-
-                <div id="reassembled-message">
-                    <p>Original message will appear here.</p>
+          <section class="stage" id="s2">
+            <div class="head">
+              <div class="eyebrow">Core lab · Step 3 of 4</div>
+              <h2>Send it across a shaky link</h2>
+              <p>
+                The sender waits for an ACK after every packet. A lost or
+                corrupted packet is sent again until the retry limit is reached.
+                You can take the link down while a run is in progress.
+              </p>
+            </div>
+            <div class="panel">
+              <div class="controls">
+                <div class="field">
+                  <label for="ord">Delivery order</label
+                  ><select id="ord">
+                    <option value="n">In sequence</option>
+                    <option value="r">Reverse order</option>
+                  </select>
                 </div>
-            </section>
+                <div class="field">
+                  <label for="loss">Packet loss</label
+                  ><select id="loss">
+                    <option value="0">0% (perfect)</option>
+                    <option value="10">10%</option>
+                    <option value="30" selected>30%</option>
+                    <option value="50">50%</option>
+                    <option value="70">70%</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="corr">Bit corruption</label
+                  ><select id="corr">
+                    <option value="0" selected>0%</option>
+                    <option value="10">10%</option>
+                    <option value="25">25%</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="retries">Retry limit</label
+                  ><select id="retries">
+                    <option>0</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option selected>3</option>
+                    <option>5</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="spd">Speed</label
+                  ><select id="spd">
+                    <option value="0.6">Slow</option>
+                    <option value="1" selected>Normal</option>
+                    <option value="2.5">Fast</option>
+                  </select>
+                </div>
+                <div class="btnrow">
+                  <button class="btn" id="go">Transmit packets</button
+                  ><button class="btn ghost" id="stop" disabled>Stop</button>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="path">
+                <div class="node">
+                  <h3>Sender</h3>
+                  <p id="sp">Ready</p>
+                  <div class="mini" id="sq"></div>
+                </div>
+                <div class="wire" aria-hidden="true">
+                  <div class="fly" id="pkt">P1</div>
+                  <div class="fly" id="ack">ACK 1</div>
+                </div>
+                <div class="node">
+                  <h3>Receiver</h3>
+                  <p id="rp">Waiting</p>
+                  <div class="mini" id="rq"></div>
+                </div>
+              </div>
+              <div class="status" id="st" aria-live="polite">
+                Press Transmit to start.
+              </div>
+            </div>
+            <div class="panel">
+              <h3>Event log</h3>
+              <ul class="log" id="log"></ul>
+            </div>
+            <div class="foot">
+              <a class="btn ghost" href="#/lab/1">← Back</a
+              ><a class="btn" href="#/lab/3">See what arrived →</a>
+            </div>
+          </section>
 
-            <button id="back-to-menu">Back to Operations</button>
-    </section>
-    <script src="js/app.js"></script>
-</body>
+          <section class="stage" id="s3">
+            <div class="head">
+              <div class="eyebrow">Core lab · Step 4 of 4</div>
+              <h2>Rebuild the message</h2>
+              <p>
+                The receiver verifies each packet, puts them in order by
+                sequence number, joins the bytes and decodes them as UTF-8.
+              </p>
+            </div>
+            <div class="panel empty" id="rEmpty">
+              <p>No transmission yet. Send the packets first.</p>
+              <a class="btn" href="#/lab/2">Go to the link</a>
+            </div>
+            <div id="rBody">
+              <div class="cols2">
+                <div class="panel">
+                  <h3>Arrival order</h3>
+                  <p class="hint">The order packets reached the receiver.</p>
+                  <ul class="log" id="arr"></ul>
+                </div>
+                <div class="panel">
+                  <h3>Slots by sequence number</h3>
+                  <p class="hint" id="rc"></p>
+                  <div class="slots" id="slots"></div>
+                </div>
+              </div>
+              <div class="panel">
+                <h3>Reassembled message</h3>
+                <p class="hint" id="rhint">&nbsp;</p>
+                <div class="result" id="res" aria-live="polite"></div>
+              </div>
+            </div>
+            <div class="foot">
+              <a class="btn ghost" href="#/lab/2">← Back</a
+              ><a class="btn ghost" href="#/lab/0">Start over</a>
+            </div>
+          </section>
 
+          <!-- ============ Dynamic views ============ -->
+          <section class="stage" id="dash"></section>
+          <section class="stage" id="mview"></section>
+        </main>
+        <footer class="site-foot">
+          Data Comms Lab · every simulator runs locally in your browser
+        </footer>
+      </div>
+    </div>
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <!-- One entry point. type="module" turns on import/export; it must be served over http:// (see README). -->
+    <script type="module" src="./js/app.js"></script>
+  </body>
 </html>

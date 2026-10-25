@@ -1,0 +1,122 @@
+/* ==========================================================================
+   responsive.css
+   Responsive and motion: tablet/phone breakpoints (mobile drawer), reduced-motion preference, keyframe animations, print rules.
+   Load order matters: see the <link> list in index.html (tokens, base, layout, components,
+   dashboard, lab, modules, learning, responsive). Later files may override earlier ones.
+   ========================================================================== */
+
+@media (max-width: 1000px) {
+  .cols2,
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .top-stats {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(88vw, 320px);
+    transform: translateX(-102%);
+    transition: transform 0.25s ease;
+    box-shadow: var(--shadow);
+  }
+  body.nav-open .sidebar {
+    transform: none;
+  }
+  body.nav-open .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 35;
+  }
+  .icon-btn.menu {
+    display: grid;
+  }
+  .path {
+    grid-template-columns: 1fr;
+  }
+  .wire {
+    height: 54px;
+  }
+  .rate {
+    grid-template-columns: 1fr 3fr 3.4rem;
+  }
+  .rate span {
+    grid-column: 1 / -1;
+  }
+  .states {
+    grid-template-columns: 1fr;
+  }
+  .foot .btn {
+    flex: 1;
+  }
+}
+@media (max-width: 480px) {
+  #view {
+    padding: 0.9rem;
+  }
+  .panel {
+    padding: 0.9rem;
+  }
+  .by {
+    width: 96px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media print {
+  .sidebar,
+  .topbar,
+  .toasts,
+  .foot,
+  .scrim {
+    display: none !important;
+  }
+  .app {
+    display: block;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

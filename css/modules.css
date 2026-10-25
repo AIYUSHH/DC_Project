@@ -1,0 +1,578 @@
+/* ==========================================================================
+   modules.css
+   Learning modules: bit grids, window strips, ladder diagrams, header diagrams, topology, charts, TCP state boxes, packet-capture tables, terminal.
+   Load order matters: see the <link> list in index.html (tokens, base, layout, components,
+   dashboard, lab, modules, learning, responsive). Later files may override earlier ones.
+   ========================================================================== */
+
+.bitgrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-x: auto;
+}
+.brow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.brow code {
+  width: 2.4rem;
+  text-align: center;
+  flex: none;
+}
+.brow .bt,
+.bitrow .bt {
+  font: 600 0.9rem var(--mono);
+}
+.chip.on {
+  background: var(--c0);
+  color: var(--accent-ink);
+  border-color: var(--c0);
+}
+.chip.flip,
+.chip.hit {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
+}
+.rates {
+  display: grid;
+  gap: 0.6rem;
+}
+.rate {
+  display: grid;
+  grid-template-columns: 11rem 1fr 4.2rem;
+  gap: 0.8rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+.rate .bar {
+  margin: 0;
+}
+.rate b {
+  font-family: var(--mono);
+  text-align: right;
+}
+.wstrip {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 0.3rem 0 0.8rem;
+}
+.wstrip .cell {
+  min-width: 2.2rem;
+  text-align: center;
+  padding: 0.3rem 0.4rem;
+  border-radius: 7px;
+  font: 600 0.8rem var(--mono);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+}
+.wstrip .cell.acked,
+.wstrip .cell.ok {
+  background: color-mix(in srgb, var(--ok) 20%, transparent);
+  border-color: var(--ok);
+}
+.wstrip .cell.win,
+.wstrip .cell.sent {
+  background: color-mix(in srgb, var(--c0) 22%, transparent);
+  border-color: var(--c0);
+}
+.wstrip .cell.lost,
+.wstrip .cell.bad {
+  background: color-mix(in srgb, var(--bad) 22%, transparent);
+  border-color: var(--bad);
+}
+.wstrip .cell.buf {
+  background: color-mix(in srgb, var(--warn) 22%, transparent);
+  border-color: var(--warn);
+}
+.stepmsg {
+  background: var(--bg2);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+}
+.ladder {
+  width: 100%;
+  height: auto;
+  max-height: 640px;
+  display: block;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-family: var(--sans);
+}
+.ladder .life {
+  stroke: var(--line2);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+.ladder .head {
+  fill: var(--surface2);
+  stroke: var(--line2);
+}
+.ladder .headt {
+  fill: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+}
+.ladder .tick {
+  fill: var(--faint);
+  font: 10px var(--mono);
+}
+.ladder .ml {
+  stroke: var(--k, var(--c0));
+  stroke-width: 2.4;
+  fill: none;
+}
+.ladder .ah {
+  fill: var(--k, var(--c0));
+}
+.ladder .x {
+  stroke: var(--bad);
+  stroke-width: 3;
+  fill: none;
+}
+.ladder .lbl {
+  fill: var(--text);
+  font: 600 11px var(--mono);
+  paint-order: stroke;
+  stroke: var(--bg2);
+  stroke-width: 4px;
+}
+.ladder .m.dim {
+  opacity: 0.25;
+}
+.ladder .mk circle {
+  fill: var(--k, var(--c3));
+}
+.ladder .mk text {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.ladder .m.an .ml {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 0.5s ease forwards;
+  animation-delay: var(--d, 0s);
+}
+.ladder .m.an .ah,
+.ladder .m.an .lbl,
+.ladder .m.an .x {
+  opacity: 0;
+  animation: fade 0.3s ease forwards;
+  animation-delay: calc(var(--d, 0s) + 0.35s);
+}
+.hdr32 {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-x: auto;
+}
+.hrow {
+  display: flex;
+  gap: 3px;
+  min-width: 520px;
+}
+.hbox {
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--k) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--k) 50%, transparent);
+}
+.hbox small {
+  display: block;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.hbox b {
+  font: 600 0.82rem var(--mono);
+  overflow-wrap: anywhere;
+}
+.fragstrip {
+  display: flex;
+  gap: 4px;
+  margin: 0.6rem 0;
+}
+.frag {
+  padding: 0.45rem;
+  text-align: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--k) 20%, var(--surface));
+  border: 1px solid var(--k);
+  min-width: 3rem;
+}
+.frag small {
+  display: block;
+}
+.frag.lostf {
+  opacity: 0.35;
+  border-style: dashed;
+}
+.ttlmeter {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 0.6rem 0;
+}
+.ttlmeter .hop {
+  flex: 1 1 5rem;
+  padding: 0.45rem;
+  border-radius: 9px;
+  background: var(--bg2);
+  border: 1px solid var(--ok);
+  text-align: center;
+  font-size: 0.78rem;
+}
+.ttlmeter .hop b {
+  display: block;
+}
+.ttlmeter .hop.dead {
+  border-color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+}
+.ttlmeter .hop.off {
+  opacity: 0.35;
+  border-color: var(--line);
+}
+.topo {
+  width: 100%;
+  height: auto;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.topo .lk line.hit {
+  stroke: transparent;
+  stroke-width: 18;
+}
+.topo .lk {
+  cursor: pointer;
+}
+.topo .lk line.vis {
+  stroke: var(--line2);
+  stroke-width: 3;
+}
+.topo .lk.on line.vis {
+  stroke: var(--ok);
+  stroke-width: 5;
+}
+.topo .lk.down line.vis {
+  stroke: var(--bad);
+  stroke-dasharray: 6 6;
+  opacity: 0.8;
+}
+.topo .lk rect {
+  fill: var(--surface);
+  stroke: var(--line2);
+}
+.topo .lk:hover rect,
+.topo .lk:focus-visible rect {
+  stroke: var(--accent);
+}
+.topo .lk text {
+  fill: var(--muted);
+  font: 600 11px var(--mono);
+}
+.topo .lk.down text {
+  fill: var(--bad);
+}
+.topo .nd circle {
+  fill: var(--surface2);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.topo .nd.host circle {
+  stroke: var(--c3);
+}
+.topo .nd.on circle {
+  fill: color-mix(in srgb, var(--ok) 25%, var(--surface2));
+  stroke: var(--ok);
+}
+.topo text {
+  fill: var(--text);
+  font: 600 13px var(--sans);
+}
+.topo .pkt {
+  fill: var(--warn);
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+.chart {
+  width: 100%;
+  height: auto;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.chart .grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.chart .ax {
+  fill: var(--muted);
+  font: 10.5px var(--mono);
+}
+.chart .ssl {
+  fill: none;
+  stroke: var(--c1);
+  stroke-width: 1.8;
+  stroke-dasharray: 6 5;
+}
+.chart polyline,
+.chart path {
+  fill: none;
+}
+.chart .cl {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.4;
+}
+.chart .pt.ss {
+  fill: var(--c1);
+}
+.chart .pt.ca {
+  fill: var(--c0);
+}
+.chart .pt.loss {
+  fill: var(--bad);
+}
+.chart .zw {
+  fill: var(--bad);
+  font: 600 10px var(--mono);
+}
+.chart .hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.chart .bufbar {
+  fill: var(--c0);
+}
+.chart .bufbar.full {
+  fill: var(--bad);
+}
+.chart .wf {
+  fill: var(--c0);
+}
+.chart .wf.c1 {
+  fill: var(--c1);
+}
+.chart .wf.c2 {
+  fill: var(--c2);
+}
+.chart .wf.c3 {
+  fill: var(--c3);
+}
+.legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0.4rem 0;
+}
+.states {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+.stbox {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.sbadge {
+  align-self: flex-start;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 8px;
+  padding: 0.15rem 0.7rem;
+  font: 700 0.9rem var(--mono);
+}
+.stbox span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.tcponly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+}
+.segbar {
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  margin: 0.5rem 0 1rem;
+  min-height: 46px;
+}
+.segbar > * {
+  padding: 0.5rem 0.6rem;
+  text-align: center;
+  font: 600 0.78rem var(--mono);
+  background: color-mix(in srgb, var(--k) 25%, var(--surface));
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+pre.http,
+pre {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 0.8rem 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+pre .hs {
+  color: var(--c2);
+  font-weight: 700;
+}
+pre .hk {
+  color: var(--c1);
+}
+.tree {
+  font-size: 0.86rem;
+}
+.lyr {
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg2);
+}
+.lyr summary {
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+}
+.lyr summary span {
+  color: var(--muted);
+}
+.lyr ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.4rem;
+}
+.lyr li {
+  padding: 0.2rem 0.75rem 0.2rem 1.2rem;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.lyr li:hover {
+  background: var(--accent-soft);
+}
+.lyr li em {
+  font-style: normal;
+  color: var(--muted);
+  margin-right: 0.4rem;
+}
+.hexpane {
+  font: 0.8rem var(--mono);
+  overflow-x: auto;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 0.6rem;
+}
+.hx {
+  display: flex;
+  gap: 1rem;
+  white-space: nowrap;
+}
+.hx .off {
+  color: var(--faint);
+}
+.hx .by {
+  display: flex;
+  gap: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  width: auto;
+  text-align: left;
+}
+.hx i {
+  font-style: normal;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.hx i.hlb {
+  background: var(--warn);
+  color: #000;
+}
+.hx .asc {
+  color: var(--muted);
+}
+#clist tr.pr {
+  cursor: pointer;
+}
+#clist tr.pr.sel td {
+  background: var(--accent-soft);
+}
+tr.pr.retx td {
+  color: var(--bad);
+}
+tr.pr.dnsr td:nth-child(5) {
+  color: var(--c3);
+}
+tr.pr.httpr td:nth-child(5) {
+  color: var(--c2);
+}
+tr.pr.tcpr td:nth-child(5) {
+  color: var(--c0);
+}
+td.info {
+  max-width: 360px;
+}
+.term {
+  background: #05080f;
+  color: #cfe8d6;
+  font: 0.84rem/1.5 var(--mono);
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  min-height: 240px;
+  max-height: 420px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--line);
+}
+.termin {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+.termin > span {
+  font: 700 1rem var(--mono);
+  color: var(--c2);
+}
+.termin input {
+  font-family: var(--mono);
+  flex: 1;
+}
+.term .ok {
+  color: var(--ok);
+}
+.term .warn {
+  color: var(--warn);
+}
+.term .dim {
+  color: #7d8aa8;
+}
+.term .p,
+.term .cmd {
+  color: var(--c2);
+}
+.term .err {
+  color: var(--bad);
+}

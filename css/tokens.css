@@ -1,0 +1,62 @@
+/* ==========================================================================
+   tokens.css
+   Design tokens: every colour, font and size lives here as a CSS custom property (--name). Dark is the default; [data-theme="light"] overrides the same names. Change a token here and the whole app follows.
+   Load order matters: see the <link> list in index.html (tokens, base, layout, components,
+   dashboard, lab, modules, learning, responsive). Later files may override earlier ones.
+   ========================================================================== */
+
+:root {
+  --bg: #0b1020;
+  --bg2: #0f1630;
+  --surface: #131b36;
+  --surface2: #1a2446;
+  --line: #27325c;
+  --line2: #34417a;
+  --text: #e8ecff;
+  --muted: #9aa6d1;
+  --faint: #6b779f;
+  --accent: #5b8cff;
+  --accent-ink: #061030;
+  --accent-soft: rgba(91, 140, 255, 0.14);
+  --c0: #5b8cff;
+  --c1: #ff9f43;
+  --c2: #35d6a0;
+  --c3: #b583ff;
+  --c4: #ff6fae;
+  --ok: #35d6a0;
+  --bad: #ff6b7a;
+  --warn: #ffc24b;
+  --info: #5bb8ff;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --radius: 14px;
+  --radius-sm: 9px;
+  --sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --side: 284px;
+  /* Colour name read by the core-lab script for a corrupted packet (lab/transmission-stage.js). */
+  --coral: var(--bad);
+}
+:root[data-theme='light'] {
+  --bg: #f4f6fc;
+  --bg2: #eaeefa;
+  --surface: #ffffff;
+  --surface2: #f0f3fb;
+  --line: #dbe1f2;
+  --line2: #c4cde8;
+  --text: #121a36;
+  --muted: #4f5b82;
+  --faint: #7a85a8;
+  --accent: #2f5fe0;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(47, 95, 224, 0.1);
+  --c0: #2f5fe0;
+  --c1: #d9731a;
+  --c2: #0e9f6e;
+  --c3: #8a4fe0;
+  --c4: #d6336c;
+  --ok: #0e9f6e;
+  --bad: #d63a4c;
+  --warn: #b97a00;
+  --info: #1f7fc4;
+  --shadow: 0 8px 24px rgba(30, 45, 100, 0.1);
+}

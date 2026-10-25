@@ -1,0 +1,254 @@
+/* ==========================================================================
+   lab.css
+   Core lab: byte cards, packet cards, the sender/wire/receiver animation, event log, receiver slots and result box.
+   Load order matters: see the <link> list in index.html (tokens, base, layout, components,
+   dashboard, lab, modules, learning, responsive). Later files may override earlier ones.
+   ========================================================================== */
+
+.bytes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+.by {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.6rem;
+  width: 112px;
+  text-align: center;
+}
+.by .g {
+  font-size: 1.3rem;
+  font-weight: 700;
+  min-height: 1.8rem;
+}
+.by .g.c {
+  color: var(--faint);
+  font-size: 0.8rem;
+  padding-top: 0.35rem;
+}
+.by .h {
+  font: 700 1.05rem var(--mono);
+  color: var(--accent);
+}
+.by .dec {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.bits {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.bits i {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+}
+.bits i.on {
+  background: var(--c0);
+  border-color: var(--c0);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--c0) 60%, transparent);
+}
+.packets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.8rem;
+}
+.pk {
+  border: 1px solid color-mix(in srgb, var(--k) 55%, transparent);
+  background: color-mix(in srgb, var(--k) 10%, var(--surface));
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: default;
+}
+.pk .t {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  color: var(--k);
+  margin-bottom: 0.35rem;
+}
+.pk .s {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.pk .s b {
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  min-width: 4.4rem;
+}
+.path {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(120px, 2fr) minmax(150px, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+.node {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 0.8rem;
+  min-height: 120px;
+}
+.node h3 {
+  margin: 0 0 0.2rem;
+}
+.node p {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mini .chip {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+}
+.mini .chip.live {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.mini .chip.ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.mini .chip.bad {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.wire {
+  position: relative;
+  height: 70px;
+}
+.wire::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px dashed var(--line2);
+}
+.fly {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  background: var(--c0);
+  color: var(--accent-ink);
+  font: 700 0.8rem var(--mono);
+  opacity: 0;
+  white-space: nowrap;
+}
+#ack {
+  top: 80%;
+  background: var(--c2);
+}
+.fly.lost {
+  background: var(--bad);
+}
+.fly.corrupt {
+  background: var(--warn);
+}
+.status {
+  margin-top: 0.9rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+.log {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  font: 0.84rem var(--mono);
+}
+.log li {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.tag {
+  flex: none;
+  min-width: 3.8rem;
+  font-weight: 700;
+  color: var(--info);
+}
+.tag.ok,
+.log .ok .tag {
+  color: var(--ok);
+}
+.tag.bad,
+.log .bad .tag {
+  color: var(--bad);
+}
+.log .warn .tag {
+  color: var(--warn);
+}
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+.slot {
+  border-radius: 11px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+}
+.slot b {
+  display: block;
+  font-size: 0.78rem;
+}
+.slot span {
+  font: 0.85rem var(--mono);
+}
+.slot.ok {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+.slot.miss {
+  border-style: dashed;
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.result {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  font-size: 1.15rem;
+  min-height: 3.4rem;
+  overflow-wrap: anywhere;
+}
+.result.bad {
+  border-color: var(--bad);
+  font-size: 0.95rem;
+}
+.result.caret::after {
+  content: '▍';
+  color: var(--accent);
+  animation: blink 1s steps(2) infinite;
+}
+.result .partial {
+  margin-top: 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

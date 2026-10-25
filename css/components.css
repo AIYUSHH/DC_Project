@@ -1,0 +1,515 @@
+/* ==========================================================================
+   components.css
+   Components: reusable UI pieces - buttons, form fields, chips, pills, stat tiles, verdict boxes, tables, tabs, progress bars, toasts.
+   Load order matters: see the <link> list in index.html (tokens, base, layout, components,
+   dashboard, lab, modules, learning, responsive). Later files may override earlier ones.
+   ========================================================================== */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.panel.empty {
+  text-align: center;
+  padding: 2rem;
+}
+.panel.detail {
+  background: var(--surface2);
+}
+.cols2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.cols2 > * {
+  min-width: 0;
+}
+.cols2 > .panel {
+  margin-bottom: 0;
+}
+.cols2 + .panel,
+.cols2 + .cols2 {
+  margin-top: 1rem;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font: 600 0.93rem var(--sans);
+  padding: 0.65rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform 0.12s,
+    filter 0.15s;
+  min-height: 40px;
+}
+.btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: none;
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line2);
+}
+.btn.ghost:hover {
+  border-color: var(--accent);
+}
+.btn.sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.84rem;
+  min-height: 32px;
+}
+.btn[disabled],
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+.btnrow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.9rem;
+  align-items: end;
+}
+.controls .btnrow {
+  grid-column: 1 / -1;
+  margin-top: 0.2rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  margin-bottom: 0.6rem;
+}
+.controls .field {
+  margin-bottom: 0;
+}
+.field label,
+label.inl {
+  font-size: 0.83rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+label.inl {
+  display: inline;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  width: 100%;
+  min-width: 0;
+}
+select {
+  width: auto;
+  max-width: 100%;
+}
+.field select {
+  width: 100%;
+}
+textarea {
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 0.92rem;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+input[type='range'] {
+  padding: 0;
+  accent-color: var(--accent);
+  height: 28px;
+  background: none;
+  border: 0;
+}
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  accent-color: var(--accent);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  margin-right: 0.6rem;
+}
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  padding: 0 0.75rem;
+  margin: 0.5rem 0;
+}
+.search-row input {
+  border: 0;
+  background: none;
+  padding: 0.6rem 0;
+}
+.search-row input:focus {
+  outline: none;
+}
+.search-row:focus-within {
+  border-color: var(--accent);
+}
+.presets,
+.chips,
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+.presets {
+  margin: 0.3rem 0 0.8rem;
+}
+.chipbtn {
+  font: 500 0.84rem var(--sans);
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+}
+.chipbtn:hover {
+  border-color: var(--accent);
+}
+.chipbtn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.filters input {
+  width: auto;
+  flex: 1 1 180px;
+}
+.chip {
+  font: 500 0.85rem var(--mono);
+  padding: 0.22rem 0.55rem;
+  border-radius: 7px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  transition:
+    background 0.15s,
+    opacity 0.2s;
+}
+.chip.c0,
+.chip.c1,
+.chip.c2,
+.chip.c3,
+.chip.c4 {
+  background: color-mix(in srgb, currentColor 0%, transparent);
+}
+.c0 {
+  --k: var(--c0);
+}
+.c1 {
+  --k: var(--c1);
+}
+.c2 {
+  --k: var(--c2);
+}
+.c3 {
+  --k: var(--c3);
+}
+.c4 {
+  --k: var(--c4);
+}
+.chip[class*='c'] {
+  border-color: color-mix(in srgb, var(--k, var(--line)) 55%, transparent);
+  background: color-mix(in srgb, var(--k, var(--surface2)) 14%, var(--surface));
+}
+button.chip {
+  cursor: pointer;
+}
+button.chip:hover {
+  border-color: var(--k, var(--accent));
+}
+.chip.hl {
+  background: color-mix(in srgb, var(--k, var(--accent)) 45%, var(--surface));
+}
+.chip.bt {
+  min-width: 1.9rem;
+  text-align: center;
+  padding: 0.2rem 0;
+}
+.bitrow {
+  gap: 0.3rem;
+}
+.dim {
+  opacity: 0.4;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font: 600 0.72rem var(--sans);
+  padding: 0.12rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.pill.live {
+  background: color-mix(in srgb, var(--ok) 16%, transparent);
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+}
+.pill.bad {
+  background: color-mix(in srgb, var(--bad) 16%, transparent);
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+}
+.pill .ic {
+  width: 0.95em;
+  height: 0.95em;
+}
+.stats,
+.statrow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.6rem;
+}
+.stat {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+}
+.stat b {
+  display: block;
+  font: 700 1.35rem var(--mono);
+  color: var(--text);
+}
+.stat span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.verdict {
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin: 0.8rem 0;
+  border: 1px solid;
+  border-left-width: 4px;
+  font-size: 0.94rem;
+}
+.verdict b {
+  margin-right: 0.3rem;
+}
+.verdict.ok {
+  background: color-mix(in srgb, var(--ok) 11%, transparent);
+  border-color: var(--ok);
+}
+.verdict.bad {
+  background: color-mix(in srgb, var(--bad) 11%, transparent);
+  border-color: var(--bad);
+}
+.verdict.warn {
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border-color: var(--warn);
+}
+.verdict.info {
+  background: color-mix(in srgb, var(--info) 11%, transparent);
+  border-color: var(--info);
+}
+.blks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+  margin: 0.7rem 0;
+}
+.blk {
+  border: 1px solid color-mix(in srgb, var(--k, var(--line2)) 60%, transparent);
+  background: color-mix(in srgb, var(--k, var(--surface2)) 12%, var(--surface));
+  border-radius: 11px;
+  padding: 0.55rem 0.75rem;
+  min-width: 0;
+}
+.blk b {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--k, var(--muted));
+}
+.blk span {
+  font: 500 0.9rem var(--mono);
+  overflow-wrap: anywhere;
+}
+.tscroll {
+  overflow-x: auto;
+  margin: 0.6rem 0;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+.tb {
+  width: 100%;
+  font-size: 0.88rem;
+}
+.tb th {
+  text-align: left;
+  background: var(--surface2);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  position: sticky;
+  top: 0;
+}
+.tb th,
+.tb td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  vertical-align: top;
+}
+.tb td {
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  white-space: normal;
+}
+.tb tr:last-child td {
+  border-bottom: 0;
+}
+.tb tbody tr:hover td {
+  background: var(--accent-soft);
+}
+.bar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface2);
+  overflow: hidden;
+  margin: 0.5rem 0 0.8rem;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--c0), var(--c2));
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+.tabs {
+  display: flex;
+  gap: 0.3rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1rem;
+  scrollbar-width: thin;
+}
+.tab {
+  font: 600 0.9rem var(--sans);
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.tabpanel {
+  animation: rise 0.25s ease both;
+  min-width: 0;
+}
+.ul {
+  list-style: none;
+  padding: 0;
+}
+.ul li {
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.ul li:last-child {
+  border: 0;
+}
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  z-index: 90;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  box-shadow: var(--shadow);
+  max-width: 340px;
+  animation: rise 0.3s ease both;
+}
+.toast.out {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: 0.4s;
+}
+.toast b {
+  display: block;
+}
+.toast span:not(.toast-ic) {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.toast-ic {
+  color: var(--warn);
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+}
+.toast-ic .ic {
+  width: 1.5rem;
+  height: 1.5rem;
+}

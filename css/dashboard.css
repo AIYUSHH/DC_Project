@@ -1,0 +1,162 @@
+/* ==========================================================================
+   dashboard.css
+   Dashboard: hero, progress ring, learning path, module cards and achievement badges. Loaded after components.css to keep the original cascade order.
+   Load order matters: see the <link> list in index.html (tokens, base, layout, components,
+   dashboard, lab, modules, learning, responsive). Later files may override earlier ones.
+   ========================================================================== */
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1.2rem;
+  align-items: center;
+  margin-bottom: 1.2rem;
+}
+.hero h2 {
+  font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+}
+.hero p {
+  color: var(--muted);
+  max-width: 52ch;
+}
+.resume {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 0;
+}
+.resume h3 {
+  margin: 0.1rem 0 0.2rem;
+}
+.ring {
+  --p: 0;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--surface2) 0);
+  position: relative;
+}
+.ring::after {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  background: var(--surface);
+  border-radius: 50%;
+}
+.ring b {
+  position: relative;
+  z-index: 1;
+  font: 700 1.1rem var(--mono);
+}
+.lpath {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.4rem 0 1rem;
+}
+.lpath .step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: var(--surface2);
+  color: var(--muted);
+  font: 500 0.86rem var(--sans);
+  text-decoration: none;
+  cursor: pointer;
+}
+.lpath .step.done {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.lpath .step.cur {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+.lpath .step small {
+  font-family: var(--mono);
+}
+.exp {
+  padding-left: 1.1rem;
+}
+.exp li {
+  margin: 0.35rem 0;
+}
+.dgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.7rem;
+}
+.mc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 0.9rem 1rem;
+  color: var(--text);
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+.mc:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+}
+.mc h3 {
+  margin: 0;
+}
+.mc p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.mc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--accent);
+}
+.gterm.open {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.7rem;
+}
+.badge {
+  background: var(--bg2);
+  border: 1px solid var(--warn);
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.badge i {
+  font-style: normal;
+  font-size: 1.5rem;
+}
+.badge small {
+  font-size: 0.78rem;
+}
+.badge.lock {
+  border-color: var(--line);
+  opacity: 0.6;
+  filter: grayscale(1);
+}

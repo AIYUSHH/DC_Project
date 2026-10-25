@@ -1,0 +1,111 @@
+/* ==========================================================================
+   learning.css
+   Learning screens: tutorial picker and steps, quiz options and question styling.
+   Load order matters: see the <link> list in index.html (tokens, base, layout, components,
+   dashboard, lab, modules, learning, responsive). Later files may override earlier ones.
+   ========================================================================== */
+
+.tutpick {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.6rem;
+}
+.tutbtn {
+  text-align: left;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.tutbtn.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.tutbtn small {
+  font-size: 0.78rem;
+}
+.steps {
+  list-style: none;
+  padding: 0;
+}
+.steps li {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.steps li span:nth-child(2) {
+  flex: 1;
+}
+.tick {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--surface2);
+  font: 600 0.78rem var(--mono);
+  color: var(--muted);
+}
+.steps li.ok .tick {
+  background: var(--ok);
+  color: var(--accent-ink);
+}
+.opts {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
+}
+.opt {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  text-align: left;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.opt:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.opt span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface2);
+  display: grid;
+  place-items: center;
+  font: 700 0.8rem var(--mono);
+  flex: none;
+}
+.opt.right {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+.opt.wrong {
+  border-color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+}
+.opt:disabled {
+  cursor: default;
+}
+.quizq {
+  margin: 0.6rem 0;
+}
+.tagc {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--accent);
+}
