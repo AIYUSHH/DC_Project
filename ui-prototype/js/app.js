@@ -37,7 +37,7 @@ document
   .querySelectorAll("[data-go]")
   .forEach((b) => (b.onclick = () => go(+b.dataset.go)));
 function encode() {
-  const m = Array.from($("msg").value || " ");
+  const m = Array.from($("msg").value || "");
   S.bytes = [];
   let h = "";
   m.forEach((c) => {
