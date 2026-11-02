@@ -51,6 +51,7 @@ import './modules/application-layer/http-tls.js';
 import './modules/advanced/encapsulation.js';
 import './modules/advanced/packet-capture.js';
 import './modules/advanced/troubleshooting.js';
+import './modules/advanced/firewall.js';
 import './modules/learning/protocol-comparison.js';
 import './modules/learning/journey.js';
 import './modules/learning/tutorials.js';
