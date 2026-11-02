@@ -1,0 +1,105 @@
+/* All lab-specific rules are scoped to avoid changing existing modules. */
+.firewall-lab {
+  min-width: 0;
+}
+.firewall-lab .fw-presets {
+  margin-bottom: 0.6rem;
+}
+.firewall-lab form h4 {
+  margin: 1rem 0 0.7rem;
+}
+.firewall-lab #fw-rules {
+  margin-top: 1rem;
+}
+.firewall-lab .fw-rule-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 180px;
+}
+.firewall-lab .fw-rule-buttons .btn {
+  min-height: 36px;
+}
+.firewall-lab .fw-policy {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.firewall-lab .fw-policy label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.firewall-lab .fw-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.firewall-lab .fw-allow {
+  color: var(--ok);
+}
+.firewall-lab .fw-deny {
+  color: var(--bad);
+}
+.firewall-lab .fw-errors {
+  margin-top: 0.8rem;
+  padding: 0.8rem;
+  color: var(--bad);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+}
+.firewall-lab input:disabled {
+  opacity: 0.5;
+}
+.firewall-lab button:focus-visible,
+.firewall-lab summary:focus-visible,
+.firewall-lab input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.firewall-lab #fw-results,
+.firewall-lab #fw-trace,
+.firewall-lab #fw-comparison {
+  min-width: 0;
+  margin-top: 1rem;
+}
+.firewall-lab .fw-snapshots {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.firewall-lab .fw-snapshots summary {
+  cursor: pointer;
+}
+.firewall-lab .fw-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.firewall-lab .fw-snapshot-grid pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 0.82rem/1.7 var(--mono);
+  color: var(--muted);
+}
+.firewall-lab [hidden] {
+  display: none !important;
+}
+@media (max-width: 640px) {
+  .firewall-lab .controls,
+  .firewall-lab .fw-snapshot-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .firewall-lab .btnrow > .btn {
+    flex: 1 1 180px;
+  }
+  .firewall-lab .panel {
+    padding: 0.9rem;
+  }
+}
