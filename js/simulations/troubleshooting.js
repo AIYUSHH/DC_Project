@@ -28,6 +28,14 @@ export const FAULTS = [
   ['stale', 'A DNS record points at the wrong address'],
   ['mask', 'The subnet mask is wrong'],
   ['cable', 'The local network cable or Wi-Fi is down'],
+  ['dhcp', 'The client did not receive a valid DHCP configuration'],
+  ['http', 'A firewall blocks HTTP traffic on TCP port 80'],
+  ['server', 'The destination server is unavailable'],
+  ['routing', 'The client has an incorrect route to external networks'],
+  ['wifi', 'The wireless adapter is disconnected from the access point'],
+  ['conflict', 'Another device is using the same IP address'],
+  ['cache', 'The client is using an outdated cached DNS record'],
+  ['mtu', 'The path MTU is too small for larger packets'],
 ];
 
 /**
@@ -133,6 +141,106 @@ export const TROUBLE = [
     ],
     why: 'DNS still says intranet.local is 10.0.1.9, but the server now lives at 10.0.1.5. The A record must be updated.',
   },
+
+  {
+    id: 'mask',
+    title: 'Local devices work, but the gateway cannot be reached',
+    brief: 'A workstation can communicate with a nearby device but reports that its default gateway is unreachable.',
+    cli: { ip: '10.0.1.20', p: 28, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.21', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34' }, hops: HOPS, blocked: [],
+    hints: ['Check the interface address and prefix length.', 'Compare the gateway address with the client subnet.', 'The /28 prefix places 10.0.1.1 outside the client subnet; the intended mask is /24.'],
+    why: 'The /28 mask makes the client treat 10.0.1.1 as off-link. Correct the subnet mask to /24.'
+  },
+  {
+    id: 'cable',
+    title: 'The laptop has no network connection',
+    brief: 'The user cannot reach even nearby devices. The network icon reports that the connection is disconnected.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34' }, hops: HOPS, blocked: [], linkDown: true,
+    hints: ['Start by checking the interface state.', 'Try pinging the default gateway.', 'The interface is DOWN, indicating a disconnected cable or link.'],
+    why: 'The network interface is down, so no network traffic can leave the laptop. Reconnect the cable or restore the link.'
+  },
+  {
+    id: 'dhcp',
+    title: 'The laptop received an automatic private address',
+    brief: 'After joining the office network, the laptop has an address beginning with 169.254 and cannot access shared resources.',
+    cli: { ip: '169.254.10.20', p: 16, gw: '0.0.0.0', dns: '0.0.0.0' },
+    local: [], dnsUp: false, hosts: {}, hops: HOPS, blocked: [],
+    hints: ['Inspect the assigned IP address.', 'Look for a usable default gateway and DNS server.', 'A 169.254.x.x address is link-local and usually means DHCP did not provide a lease.'],
+    why: 'The client has an APIPA/link-local address and no usable gateway or DNS server. Restore DHCP service or renew the lease.'
+  },
+  {
+    id: 'http',
+    title: 'Secure websites work, but older HTTP sites time out',
+    brief: 'Users can open HTTPS websites, but plain HTTP websites consistently time out.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34' }, hops: HOPS, blocked: [80],
+    hints: ['Check name resolution and basic reachability.', 'Compare curl http://example.com with curl https://example.com.', 'Only TCP port 80 is filtered.'],
+    why: 'The network and DNS work, and HTTPS succeeds. TCP port 80 is blocked by a firewall rule.'
+  },
+  {
+    id: 'server',
+    title: 'One external service is offline',
+    brief: 'Other websites work normally, but the monitoring team reports that example.com is not responding.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34', 'status.example.net': '203.0.113.20' }, hops: HOPS, blocked: [], downHosts: ['93.184.216.34'],
+    hints: ['Check whether DNS resolves the destination.', 'Try another known destination to verify general connectivity.', 'The route is available, but the specific destination host does not respond.'],
+    why: 'The client has working DNS and routing, while the destination server is marked unavailable. The fault is at the server/service end.'
+  },
+  {
+    id: 'routing',
+    title: 'The route to the remote network is incorrect',
+    brief: 'The client can reach its own subnet, but traffic to remote networks follows an invalid gateway.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.9.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34' }, hops: HOPS, blocked: [],
+    hints: ['Test a local address and an external address.', 'Inspect the default route with ip route.', 'The default route points to 10.0.9.1 instead of the local router 10.0.1.1.'],
+    why: 'The default route points to a gateway outside the local subnet. Correct the route to use 10.0.1.1.'
+  },
+  {
+    id: 'wifi',
+    title: 'The wireless device is disconnected',
+    brief: 'A laptop is in range of the office access point but is not associated with the Wi-Fi network.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34' }, hops: HOPS, blocked: [], linkDown: true, wireless: true,
+    hints: ['Inspect the interface state.', 'Try pinging the access point/default gateway.', 'The wireless interface is down because it is not associated with the access point.'],
+    why: 'The wireless interface is disconnected from the access point. Reconnect to the correct SSID and verify credentials.'
+  },
+  {
+    id: 'conflict',
+    title: 'Intermittent connectivity on a shared workstation',
+    brief: 'The workstation intermittently loses access and reports duplicate-address warnings.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34' }, hops: HOPS, blocked: [], ipConflict: true,
+    hints: ['Check the interface address and system messages.', 'The configured address is also claimed by another host.', 'The duplicate IP warning identifies an address conflict.'],
+    why: 'Another device is using 10.0.1.20. Assign a unique address or correct the DHCP reservation.'
+  },
+  {
+    id: 'cache',
+    title: 'The intranet still points to its old server',
+    brief: 'The intranet server moved, but this laptop continues to connect to the previous address.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34', 'intranet.local': '10.0.1.9' }, hops: HOPS, blocked: [], cachedHosts: { 'intranet.local': '10.0.1.9' },
+    hints: ['Run nslookup intranet.local and inspect the returned address.', 'Compare that address with the known current server address 10.0.1.5.', 'The client is using a stale cached DNS answer. Flush the DNS cache after the record is corrected.'],
+    why: 'The cached DNS entry points to 10.0.1.9 instead of the current server at 10.0.1.5. Flush the local DNS cache and refresh the record.'
+  },
+  {
+    id: 'mtu',
+    title: 'Small packets work, but large transfers stall',
+    brief: 'The laptop can ping remote hosts, but large packet transfers and some VPN traffic fail.',
+    cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
+    local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
+    hosts: { 'example.com': '93.184.216.34' }, hops: HOPS, blocked: [], mtu: 1200,
+    hints: ['Check the configured interface MTU with ip addr.', 'Compare a normal ping with a large do-not-fragment ping.', 'The path MTU is 1200 bytes, so larger packets are dropped.'],
+    why: 'The path MTU is smaller than the packet size being sent. Reduce the interface/tunnel MTU or enable correct path-MTU discovery.'
+  },
 ];
 
 /**
@@ -153,6 +261,9 @@ export function netsim(sc) {
   };
   const reach = ip => {
     if (ip === C.ip || ip === '127.0.0.1') return { ok: true, local: true };
+    if (sc.linkDown) return { ok: false, why: 'link' };
+    if (sc.ipConflict && ip === C.ip) return { ok: false, why: 'conflict' };
+    if (sc.downHosts?.includes(ip)) return { ok: false, why: 'hostdown' };
     if (same(ip))
       return sc.local.includes(ip) ? { ok: true, local: true } : { ok: false, why: 'host' };
     if (!onLinkGw) return { ok: false, why: 'netunreach' };
@@ -174,7 +285,8 @@ export function netsim(sc) {
       ];
     if (c === 'ip' && a[1] === 'addr')
       return [
-        `2: eth0: <BROADCAST,MULTICAST,UP> mtu 1500`,
+        `2: eth0: <BROADCAST,MULTICAST,${sc.linkDown ? 'NO-CARRIER' : 'UP'}> mtu ${sc.mtu || 1500}`,
+        ...(sc.ipConflict ? ['    [DUP] inet ' + C.ip + '/' + C.p + ' - duplicate address detected'] : []),
         `    link/ether ${macStr(MAC.client)}`,
         `    inet ${C.ip}/${C.p} brd ${ip4((p4(C.ip) | ~mk(C.p)) >>> 0)} scope global eth0`,
       ];
@@ -184,6 +296,10 @@ export function netsim(sc) {
         `${ip4((p4(C.ip) & mk(C.p)) >>> 0)}/${C.p} dev eth0 proto kernel scope link src ${C.ip}`,
       ];
     if (c === 'cat' && a[1] === '/etc/resolv.conf') return [`nameserver ${C.dns}`];
+    if ((c === 'ipconfig' && a[1] === '/flushdns') || (c === 'resolvectl' && a[1] === 'flush-caches'))
+      return ['Successfully flushed the DNS resolver cache.'];
+    if (c === 'ping' && sc.mtu && Number(a.find(x => /^-s\\d+$/.test(x))?.slice(2) || a[a.indexOf('-s') + 1] || 56) + 28 > sc.mtu)
+      return ['ping: local error: message too long, mtu=' + sc.mtu, '100% packet loss'];
     if (c === 'ifconfig') return cmd('ip addr');
     if (!['ping', 'traceroute', 'nslookup', 'curl'].includes(c))
       return [`${c}: command not found. Type help.`];
@@ -238,6 +354,9 @@ export function netsim(sc) {
           '4 packets transmitted, 4 received, 0% packet loss'
         );
       } else if (rc.why === 'netunreach') return ['ping: connect: Network is unreachable'];
+      else if (rc.why === 'link') return ['ping: connect: Network is down'];
+      else if (rc.why === 'conflict') return ['WARNING: duplicate IP address detected for ' + C.ip];
+      else if (rc.why === 'hostdown') return ['From ' + C.gw + ' Destination Host Unreachable'];
       else if (rc.why === 'host') {
         for (let i = 1; i <= 3; i++)
           out.push(`From ${C.ip} icmp_seq=${i} Destination Host Unreachable`);
@@ -277,6 +396,8 @@ export function netsim(sc) {
       return out;
     }
     // curl
+    if (rc.why === 'link') return ['curl: (7) Network is down'];
+    if (rc.why === 'hostdown') return [`curl: (7) Failed to connect to ${host}: Destination host unavailable`];
     if (rc.why === 'netunreach')
       return [`curl: (7) Failed to connect to ${host} port ${port}: Network is unreachable`];
     if (!rc.ok || sc.blocked.includes(port))
