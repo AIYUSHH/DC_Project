@@ -55,8 +55,9 @@ export function labSplit() {
     ? S.P.map((p, i) =>
         p.map(x => `<span class="chip c${i % 4}" data-p="${i}">${hex(x)}</span>`).join('')
       ).join('')
-    : '<p class="hint">No bytes yet. Type a message first.</p>';
-  $('#pk').innerHTML = S.P.map(
+    : '<p class="hint">No data yet. Enter text or choose an image first.</p>';
+  const visiblePackets = S.P.length > 120 ? S.P.slice(0, 120) : S.P;
+  $('#pk').innerHTML = (S.P.length > 120 ? '<p class="hint">Showing the first 120 of ' + S.P.length.toLocaleString() + ' packets. All packets remain in the simulation.</p>' : '') + visiblePackets.map(
     (p, i) =>
       `<div class="pk c${i % 4}" tabindex="0" data-p="${i}"><div class="t"><span>Packet ${i + 1}</span><span>${p.length} B</span></div><div class="s"><b>Header</b>seq ${i + 1}, length ${p.length}</div><div class="s"><b>Payload</b><span>${hexs(p)}</span></div><div class="s"><b>CRC-8 trailer</b><span>${hex(packetCrc(i, p))}</span></div></div>`
   ).join('');

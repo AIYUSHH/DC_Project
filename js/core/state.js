@@ -35,4 +35,4 @@ export const DC = { mods: [], listeners: [] };
  * @property {number} tok - cancellation token: any async work compares it to the value it started with.
  * @property {string} msg - the message text.
  */
-export const S = { bytes: [], P: [], run: null, up: true, busy: false, tok: 0, msg: 'Hello, 世界' };
+export const S = { bytes: [], P: [], run: null, up: true, busy: false, tok: 0, msg: 'Hello, 世界', dataType: 'text', imageMimeType: null, imageName: null, imageSize: 0, imageUrl: null };

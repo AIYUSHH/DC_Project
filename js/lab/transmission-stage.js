@@ -126,7 +126,7 @@ export async function transmit() {
   const loss = +$('#loss').value / 100,
     corrupt = +$('#corr').value / 100,
     maxRetry = +$('#retries').value,
-    spd = +$('#spd').value;
+    spd = +$('#spd').value * (S.dataType === 'image' ? 20 : 1);
   S.run = {
     arr: [],
     got: Array(P.length).fill(null),

@@ -55,17 +55,25 @@ export function labRecv() {
       if (!g) break;
       prefix.push(...g);
     }
-    const part = dec.decode(new Uint8Array(prefix));
+    const part = S.dataType === 'text' ? dec.decode(new Uint8Array(prefix)) : '';
     res.classList.add('bad');
     flag('viewedGap');
-    res.innerHTML = `Can’t decode the whole message: ${miss} packet${miss > 1 ? 's are' : ' is'} missing.${prefix.length ? `<div class="partial">Only the in-order prefix can be read: <code>${esc(part)}</code></div>` : ''}`;
-    $('#rhint').textContent =
-      'A missing packet leaves a hole that decoding cannot bridge. A cut-off multi-byte character would show as �.';
+    res.innerHTML = `Cannot reconstruct the complete ${S.dataType === 'image' ? 'image' : 'message'}: ${miss} packet${miss > 1 ? 's are' : ' is'} missing.${S.dataType === 'text' && prefix.length ? `<div class="partial">Only the in-order prefix can be read: <code>${esc(part)}</code></div>` : ''}`;
+    $('#rhint').textContent = S.dataType === 'image' ? 'A missing packet leaves a gap in the binary file, so no complete image is displayed.' : 'A missing packet leaves a hole that decoding cannot bridge. A cut-off multi-byte character would show as �.';
     return;
   }
   flag('rebuilt');
-  $('#rhint').textContent =
-    'Slots are joined in sequence order, then the byte stream is decoded as UTF-8.';
+  if (S.dataType === 'image') {
+    const blob = new Blob([new Uint8Array(r.got.flat())], { type: S.imageMimeType || 'application/octet-stream' });
+    if (S.reconstructedImageUrl) URL.revokeObjectURL(S.reconstructedImageUrl);
+    const url = URL.createObjectURL(blob);
+    S.reconstructedImageUrl = url;
+    const img = document.createElement('img'); img.src = url; img.alt = 'Reconstructed image'; img.className = 'reconstructed-image';
+    res.replaceChildren(img); res.classList.add('image-result');
+    $('#rhint').textContent = 'All ' + S.bytes.length.toLocaleString() + ' bytes were reassembled in sequence. Reconstructed ' + (S.imageName || 'image') + ' (' + (blob.size / 1024).toFixed(2) + ' KB).';
+    return;
+  }
+  $('#rhint').textContent = 'Slots are joined in sequence order, then the byte stream is decoded as UTF-8.';
   const t = Array.from(dec.decode(new Uint8Array(r.got.flat())));
   let k = 0;
   res.textContent = '';

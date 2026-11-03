@@ -252,3 +252,18 @@
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+/* Text/image input controls within the existing Core Lab stage. */
+.data-mode{display:flex;gap:.55rem;margin-bottom:1rem}
+.image-input{display:grid;gap:.7rem;margin:1rem 0}
+.image-input input[type=file]{max-width:100%;padding:.7rem;border:1px solid var(--line);border-radius:10px;background:var(--bg2);color:var(--text)}
+.image-preview{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;color:var(--muted)}
+.image-preview img{display:block;max-width:min(240px,100%);max-height:180px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:var(--bg2)}
+.image-preview p{margin:0;font-size:.85rem}
+.image-byte-summary{display:grid;gap:.35rem;padding:1rem;border:1px solid var(--line);border-radius:12px;background:var(--bg2)}
+.image-byte-summary strong{color:var(--accent);font:600 1.1rem var(--mono)}
+.image-byte-summary span{color:var(--muted);font-size:.88rem}
+.result.image-result{display:flex;justify-content:center}
+.reconstructed-image{display:block;max-width:100%;max-height:420px;object-fit:contain;border-radius:10px}
+
+.image-input[hidden],.presets[hidden],#textInput[hidden]{display:none!important}

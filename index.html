@@ -198,15 +198,14 @@
           <section class="stage" id="s0">
             <div class="head">
               <div class="eyebrow">Core lab · Step 1 of 4</div>
-              <h2>Turn words into bytes</h2>
+              <h2>Turn data into bytes</h2>
               <p>
-                Every character becomes one or more UTF-8 bytes. In the byte
-                cards, each lit square is a 1 bit and each dark square is a 0
-                bit.
+                Text is encoded as UTF-8 bytes. Images are treated as binary data and use the same packet and transmission pipeline.
               </p>
             </div>
             <div class="panel">
-              <div class="field">
+              <div class="data-mode" role="group" aria-label="Choose data type"><button class="btn sm active" id="textMode" type="button" aria-pressed="true">Text</button><button class="btn ghost sm" id="imageMode" type="button" aria-pressed="false">Image</button></div>
+              <div class="field" id="textInput">
                 <label for="msg">Your message</label
                 ><textarea
                   id="msg"
@@ -215,6 +214,7 @@
                   spellcheck="false"
                 ></textarea>
               </div>
+              <div class="image-input" id="imageInput" hidden><label for="imageFile">Choose an image (PNG, JPG, WebP · max 2 MB)</label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" /><div class="image-preview" id="imagePreview"><p class="hint">Choose an image to preview it here.</p></div></div>
               <div
                 class="presets"
                 id="presets"
@@ -366,8 +366,7 @@
               <div class="eyebrow">Core lab · Step 4 of 4</div>
               <h2>Rebuild the message</h2>
               <p>
-                The receiver verifies each packet, puts them in order by
-                sequence number, joins the bytes and decodes them as UTF-8.
+                The receiver verifies each packet and restores the original data in sequence order. Text is decoded as UTF-8; images are rebuilt from binary bytes.
               </p>
             </div>
             <div class="panel empty" id="rEmpty">
@@ -388,7 +387,7 @@
                 </div>
               </div>
               <div class="panel">
-                <h3>Reassembled message</h3>
+                <h3 id="resultTitle">Reassembled message</h3>
                 <p class="hint" id="rhint">&nbsp;</p>
                 <div class="result" id="res" aria-live="polite"></div>
               </div>

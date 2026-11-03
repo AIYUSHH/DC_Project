@@ -28,6 +28,13 @@ import { setTop } from './top-stats.js';
  * Side effects: updates S.msg and S.bytes, the DOM, the top-bar counters, and records the "typed" flag.
  */
 export function encodeMsg() {
+  if (S.dataType === 'image') {
+    $('#bytes').innerHTML = '<div class="image-byte-summary"><strong>' + S.bytes.length.toLocaleString() + ' binary bytes</strong><span>Raw image bytes are preserved; no UTF-8 decoding is performed.</span></div>';
+    $('#bsum').textContent = (S.imageName || 'Image') + ' · ' + S.bytes.length.toLocaleString() + ' bytes · ' + (S.imageMimeType || 'image');
+    $('#mstats').innerHTML = [[S.bytes.length.toLocaleString(), 'bytes'], [S.imageSize ? (S.imageSize / 1024).toFixed(2) + ' KB' : '—', 'file size'], ['Binary', 'data format']].map(([v, name]) => '<div class="stat"><b>' + v + '</b><span>' + name + '</span></div>').join('');
+    setTop(S.bytes.length);
+    return;
+  }
   const text = $('#msg').value,
     // Array.from splits by Unicode code point; text.split("") would cut emoji and other astral
     // characters in half.

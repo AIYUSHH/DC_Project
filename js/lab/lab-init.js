@@ -17,7 +17,6 @@
  * Used by: app.js
  */
 
-import { enc } from '../core/encoding.js';
 import { S } from '../core/state.js';
 import { $, esc } from '../core/utils.js';
 import { encodeMsg } from './message-stage.js';
@@ -34,6 +33,51 @@ const PRESETS = ['Hello, 世界', 'Café ☕', 'Hi 👋', 'The quick brown fox',
  */
 export function labInit() {
   $('#msg').value = S.msg;
+  let textPayloadSize = $('#ps').value;
+  const setMode = mode => {
+    const previousMode = S.dataType;
+    S.dataType = mode;
+    $('#textInput').hidden = mode !== 'text';
+    $('#presets').hidden = mode !== 'text';
+    $('#imageInput').hidden = mode !== 'image';
+    $('#textMode').classList.toggle('active', mode === 'text');
+    $('#imageMode').classList.toggle('active', mode === 'image');
+    $('#textMode').classList.toggle('ghost', mode !== 'text');
+    $('#imageMode').classList.toggle('ghost', mode !== 'image');
+    $('#textMode').setAttribute('aria-pressed', String(mode === 'text'));
+    $('#imageMode').setAttribute('aria-pressed', String(mode === 'image'));
+    $('#resultTitle').textContent = mode === 'image' ? 'Reconstructed image' : 'Reassembled message';
+    if (mode === 'text') { S.imageMimeType = null; S.imageName = null; S.imageSize = 0; $('#ps').value = textPayloadSize; encodeMsg(); labSplit(); }
+    else {
+      if (previousMode !== 'image') textPayloadSize = $('#ps').value;
+      $('#ps').value = '8';
+      S.bytes = [];
+      $('#bytes').innerHTML = '<p class="hint">Choose an image to inspect its binary data.</p>';
+      $('#bsum').textContent = 'No image selected.';
+      $('#mstats').innerHTML = '';
+      labSplit();
+    }
+  };
+  $('#textMode').onclick = () => setMode('text');
+  $('#imageMode').onclick = () => setMode('image');
+  $('#imageFile').addEventListener('change', async event => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { alert('Choose a PNG, JPG, or WebP image.'); event.target.value = ''; return; }
+    if (file.size > 2 * 1024 * 1024) { alert('For this animated lab, choose an image no larger than 2 MB. Image transfers use the maximum 8-byte payload to keep the packet count manageable.'); event.target.value = ''; return; }
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (S.imageUrl) URL.revokeObjectURL(S.imageUrl);
+      S.imageUrl = URL.createObjectURL(file);
+      S.imageMimeType = file.type; S.imageName = file.name; S.imageSize = file.size;
+      S.bytes = Array.from(bytes); S.run = null;
+      $('#imagePreview').replaceChildren();
+      const img = document.createElement('img'); img.src = S.imageUrl; img.alt = 'Selected original image';
+      const meta = document.createElement('p'); meta.textContent = file.name + ' · ' + (file.size / 1024).toFixed(2) + ' KB';
+      $('#imagePreview').append(img, meta);
+      encodeMsg(); labSplit();
+    } catch (error) { console.error('Image read failed', error); alert('The selected image could not be read.'); }
+  });
   $('#presets').innerHTML = PRESETS.map(
     p => `<button class="chipbtn" type="button">${esc(p)}</button>`
   ).join('');
@@ -42,9 +86,10 @@ export function labInit() {
     if (b) {
       $('#msg').value = b.textContent;
       encodeMsg();
+      labSplit();
     }
   };
-  $('#msg').oninput = encodeMsg;
+  $('#msg').oninput = () => { S.dataType = 'text'; encodeMsg(); labSplit(); };
   $('#ps').oninput = labSplit;
   $('#pk').addEventListener('mouseover', hoverPacket);
   $('#pk').addEventListener('focusin', hoverPacket);
@@ -63,6 +108,6 @@ export function labInit() {
     $('#lb').setAttribute('aria-pressed', !S.up);
     syncGo();
   };
+  setMode('text');
   encodeMsg();
-  S.bytes = Array.from(enc.encode($('#msg').value));
 }
