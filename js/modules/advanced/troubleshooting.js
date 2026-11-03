@@ -38,11 +38,12 @@ regMod({
     'Separate name resolution, routing and port filtering problems.',
   ],
   mount(root) {
-    const selectedCases = [...TROUBLE]
-      .map((item, index, all) => ({ item, sort: Math.random() }))
-      .sort((a, b) => a.sort - b.sort)
-      .slice(0, 5)
-      .map(entry => entry.item);
+    const shuffledCases = [...TROUBLE];
+    for (let i = shuffledCases.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledCases[i], shuffledCases[j]] = [shuffledCases[j], shuffledCases[i]];
+    }
+    const selectedCases = shuffledCases.slice(0, 5);
     let cur = 0,
       ran = 0,
       hint = 0,
