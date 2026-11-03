@@ -38,6 +38,11 @@ regMod({
     'Separate name resolution, routing and port filtering problems.',
   ],
   mount(root) {
+    const selectedCases = [...TROUBLE]
+      .map((item, index, all) => ({ item, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .slice(0, 5)
+      .map(entry => entry.item);
     let cur = 0,
       ran = 0,
       hint = 0,
@@ -48,7 +53,7 @@ regMod({
     root.innerHTML =
       panel(
         'Choose a case',
-        `<div class="presets" id="tcases">${TROUBLE.map((t, i) => `<button class="chipbtn${i === 0 ? ' on' : ''}" data-i="${i}">Case ${i + 1}</button>`).join('')}</div><div id="tbrief"></div>`
+        `<div class="presets" id="tcases">${selectedCases.map((t, i) => `<button class="chipbtn${i === 0 ? ' on' : ''}" data-i="${i}">Case ${i + 1}</button>`).join('')}</div><div id="tbrief"></div>`
       ) +
       panel(
         'Terminal on the user’s laptop',
@@ -72,12 +77,12 @@ regMod({
       ran = 0;
       hint = 0;
       done = false;
-      sim = netsim(TROUBLE[i]);
+      sim = netsim(selectedCases[i]);
       $$('#tcases .chipbtn', root).forEach(b => b.classList.toggle('on', +b.dataset.i === i));
       $('#tbrief', root).innerHTML =
-        hn(`<b>${TROUBLE[i].title}.</b> ${TROUBLE[i].brief}`) +
+        hn(`<b>${selectedCases[i].title}.</b> ${selectedCases[i].brief}`) +
         hn(
-          `The laptop is ${TROUBLE[i].cli.ip}/${TROUBLE[i].cli.p}. Use the terminal to investigate.`
+          `The laptop is ${selectedCases[i].cli.ip}/${selectedCases[i].cli.p}. Use the terminal to investigate.`
         );
       term.innerHTML = '';
       print(['Type a command, or press one of the shortcuts below. Type help for the list.']);
@@ -90,10 +95,12 @@ regMod({
         'nslookup example.com',
         'curl https://example.com',
         'curl http://example.com',
-        i === 4 ? 'nslookup intranet.local' : 'ping 10.0.1.5',
-        i === 4 ? 'curl http://intranet.local' : 'ip addr',
+        selectedCases[i].id === 'stale' || selectedCases[i].id === 'cache' ? 'nslookup intranet.local' : 'ping 10.0.1.5',
+        selectedCases[i].id === 'stale' || selectedCases[i].id === 'cache' ? 'curl http://intranet.local' : 'ip addr',
       ];
-      if (i === 4) q.push('curl http://10.0.1.5');
+      if (selectedCases[i].id === 'stale' || selectedCases[i].id === 'cache') q.push('curl http://10.0.1.5');
+      if (selectedCases[i].id === 'mtu') q.push('ping -s 1400 example.com');
+      if (selectedCases[i].id === 'dhcp') q.push('ipconfig /flushdns');
       $('#tq', root).innerHTML = q.map(x => `<button class="chipbtn">${x}</button>`).join('');
       $('#tfb', root).innerHTML = '';
       $('#tdx', root).value = '';
@@ -138,7 +145,7 @@ regMod({
     };
     $('#tsub', root).onclick = () => {
       const v = $('#tdx', root).value,
-        t = TROUBLE[cur];
+        t = selectedCases[cur];
       if (!v) {
         $('#tfb', root).innerHTML = vd('warn', 'Choose a diagnosis first.');
         return;
@@ -161,7 +168,7 @@ regMod({
         );
     };
     $('#thint', root).onclick = () => {
-      const t = TROUBLE[cur];
+      const t = selectedCases[cur];
       hint = Math.min(3, hint + 1);
       $('#tfb', root).innerHTML = vd(
         'info',
@@ -173,7 +180,7 @@ regMod({
       );
     };
     $('#tshow', root).onclick = () => {
-      const t = TROUBLE[cur];
+      const t = selectedCases[cur];
       $('#tfb', root).innerHTML = vd(
         'info',
         `Answer: ${FAULTS.find(f => f[0] === t.id)[1]}.`,
