@@ -24,9 +24,12 @@
 
 import { bin8, bytesOf, hex } from '../../core/encoding.js';
 import { S } from '../../core/state.js';
-import { hn, on, panel, sel, tbl, vd } from '../../core/ui-helpers.js';
+import { hn, on, panel, sel, vd } from '../../core/ui-helpers.js';
 import { $, esc } from '../../core/utils.js';
 import { ERR_METHODS, errChecks, fmtCheck } from '../../simulations/error-detection.js';
+import { encodeSecded, decodeSecded } from '../../simulations/hamming-code.js';
+import { encode2DParity } from '../../simulations/two-dimensional-parity.js';
+import { ERROR_PATTERNS, corruptBytes } from '../../simulations/error-injection.js';
 import { regMod } from '../registry.js';
 import { flag } from '../../app/progress.js';
 
@@ -82,13 +85,22 @@ regMod({
             [1, '1 random bit'],
             [2, '2 random bits'],
             [3, '3 random bits'],
+            [4, '4 random bits'],
             [8, 'a burst of 8'],
+            [16, 'a burst of 16'],
           ],
           1
         )}<button class="btn sm" id="einj">Inject</button>
-        <button class="btn ghost sm" id="eadj">Flip two adjacent bits</button><button class="btn ghost sm" id="eswap">Swap first two bytes</button><button class="btn ghost sm" id="ereset">Reset</button></div>`
+        <select id="epattern" aria-label="Error pattern">${ERROR_PATTERNS.map(p => `<option value="${p.id}">${p.label}</option>`).join('')}</select><button class="btn ghost sm" id="epatterngo">Inject pattern</button><button class="btn ghost sm" id="eadj">Flip two adjacent bits</button><button class="btn ghost sm" id="eswap">Swap first two bytes</button><button class="btn ghost sm" id="ereset">Reset</button></div>`
       ) +
       panel('Receiver verdict', '<div id="etab"></div><div id="enote"></div>') +
+      panel('Hamming code — detect and correct',
+        '<p class="hint">Extended Hamming (8,4) can correct one flipped bit and detect (but not correct) two flipped bits.</p>' +
+        '<div class="controls"><div class="field grow"><label for="ehdata">4 data bits</label><input id="ehdata" value="1011" maxlength="4"></div><button class="btn sm" id="ehencode">Encode</button></div><div id="ehencoded"></div>' +
+        '<div class="controls"><div class="field grow"><label for="ehrecv">Received 8-bit codeword</label><input id="ehrecv" value="10110100" maxlength="8"></div><button class="btn sm" id="ehdecode">Decode / correct</button></div><div id="ehresult"></div>') +
+      panel('Two-dimensional parity',
+        '<p class="hint">Row and column parity can locate a single flipped data bit at their intersection.</p>' +
+        '<div class="controls"><div class="field grow"><label for="e2ddata">Original data (one binary row per line)</label><textarea id="e2ddata" rows="3">1011\n0110\n1100</textarea></div><div class="field grow"><label for="e2drecv">Received data</label><textarea id="e2drecv" rows="3">1011\n0010\n1100</textarea></div></div><button class="btn sm" id="e2dcheck">Check parity</button><div id="e2dresult"></div>') +
       panel(
         'How often does each method notice?',
         `<p class="hint">Corrupt random bits many times and count how often each method detects it. This uses your current data.</p>
@@ -140,19 +152,20 @@ regMod({
           det,
         };
       });
-      $('#etab', root).innerHTML = tbl(
-        ['Method', 'Check sent', 'Receiver computes', 'Verdict'],
-        rows.map(x => [
-          x.name,
-          x.sent,
-          x.calc,
-          {
-            h: !changed
-              ? '<span class="pill">no error yet</span>'
-              : `<span class="pill ${x.det ? 'live' : 'bad'}">${x.det ? 'error detected' : 'MISSED'}</span>`,
-          },
-        ])
-      );
+      $('#etab', root).innerHTML =
+        '<div class="err-method-grid">' +
+        rows.map(x => `
+          <article class="err-method-card ${changed ? (x.det ? 'is-detected' : 'is-missed') : 'is-idle'}">
+            <div class="err-method-head">
+              <strong>${esc(x.name)}</strong>
+              <span class="err-status ${changed ? (x.det ? 'is-detected' : 'is-missed') : 'is-idle'}">${!changed ? 'Waiting' : x.det ? 'Detected' : 'Missed'}</span>
+            </div>
+            <div class="err-check-values">
+              <div><small>Sender check</small><code>${x.sent}</code></div>
+              <div><small>Receiver check</small><code>${x.calc}</code></div>
+            </div>
+          </article>`).join('') +
+        '</div>';
       let note = '';
       if (changed) {
         flag('errflip');
@@ -167,14 +180,14 @@ regMod({
         note = missed.length
           ? vd(
               'warn',
-              `${missed.length === 4 ? 'Every method' : missed.join(' and ')} missed this error.`,
-              missed.length < 4
+              `${missed.length === rows.length ? 'Every method' : missed.join(' and ')} missed this error.`,
+              missed.length < rows.length
                 ? 'The stronger methods still caught it, which is why Ethernet uses a CRC.'
                 : 'The corruption happens to produce the same check value. This is rare for CRCs.'
             )
           : vd(
               'ok',
-              'All four methods caught the error.',
+              `All ${rows.length} methods caught the error.`,
               'The receiver would discard this frame and wait for a retransmission.'
             );
       } else
@@ -207,9 +220,10 @@ regMod({
     $('#einj', root).onclick = () => {
       const n = +$('#ecount', root).value,
         total = sent().length * 8;
-      if (n === 8) {
-        const st = Math.floor(Math.random() * (total - 7));
-        for (let i = 0; i < 8; i++) flips.add(st + i);
+      if (n === 8 || n === 16) {
+        const width = Math.min(n, total);
+        const st = Math.floor(Math.random() * (total - width + 1));
+        for (let i = 0; i < width; i++) flips.add(st + i);
       } else {
         let g = 0;
         const want = flips.size + n;
@@ -241,7 +255,7 @@ regMod({
         cs = errChecks(s, odd),
         TR = 2000,
         _f = flag('trials'),
-        hit = { parity: 0, sum: 0, crc8: 0, crc32: 0 };
+        hit = Object.fromEntries(ERR_METHODS.map(m => [m.id, 0]));
       if (k > total) {
         $('#eres', root).innerHTML = vd('warn', 'Not enough bits.', 'Use longer text.');
         return;
@@ -268,6 +282,35 @@ regMod({
             ? 'An even number of flipped bits leaves a parity bit unchanged, so parity detects 0% of these errors.'
             : 'Parity catches every odd number of flips, but misses all even numbers.'
         );
+    };
+    $('#epatterngo', root).onclick = () => {
+      const result = corruptBytes(sent(), $('#epattern', root).value);
+      flips.clear(); swap = false;
+      result.indexes.forEach(i => flips.add(i));
+      refresh();
+    };
+    $('#ehencode', root).onclick = () => {
+      const data = $('#ehdata', root).value;
+      if (!/^[01]{4}$/.test(data)) { $('#ehencoded', root).innerHTML = vd('warn', 'Enter exactly four binary digits.'); return; }
+      const code = encodeSecded(data); $('#ehrecv', root).value = code;
+      $('#ehencoded', root).innerHTML = vd('ok', 'Encoded SECDED codeword: ' + code, 'The eighth bit is overall parity.');
+    };
+    $('#ehdecode', root).onclick = () => {
+      const code = $('#ehrecv', root).value;
+      if (!/^[01]{8}$/.test(code)) { $('#ehresult', root).innerHTML = vd('warn', 'Enter exactly eight binary digits.'); return; }
+      const x = decodeSecded(code);
+      $('#ehresult', root).innerHTML = vd(x.status.includes('corrected') || x.status === 'No error detected' ? 'ok' : 'warn', x.status, 'Corrected: ' + x.corrected + ' · Data: ' + x.data + ' · Syndrome: ' + x.syndrome);
+    };
+    $('#e2dcheck', root).onclick = () => {
+      try {
+        const original = encode2DParity($('#e2ddata', root).value.split(/\n/));
+        const received = $('#e2drecv', root).value.split(/\n/).map(row => row.replace(/[^01]/g, ''));
+        if (received.length !== original.matrix.length || received.some(row => row.length !== original.matrix[0].length)) throw new Error('Received data must have the same dimensions as the original.');
+        const badRows = received.map((row, i) => row.split('').reduce((a, b) => a ^ Number(b), 0) ^ original.rowParity[i]).map((v, i) => v ? i : -1).filter(i => i >= 0);
+        const badCols = original.colParity.map((p, col) => received.reduce((a, row) => a ^ Number(row[col]), 0) ^ p).map((v, i) => v ? i : -1).filter(i => i >= 0);
+        const single = badRows.length === 1 && badCols.length === 1;
+        $('#e2dresult', root).innerHTML = single ? vd('warn', 'Single-bit error located at row ' + (badRows[0] + 1) + ', column ' + (badCols[0] + 1) + '.', 'Multi-bit errors can be ambiguous.') : (badRows.length || badCols.length) ? vd('warn', 'Parity mismatch: rows ' + badRows.map(x => x + 1).join(', ') + '; columns ' + badCols.map(x => x + 1).join(', ')) : vd('ok', 'No parity mismatch detected.');
+      } catch (e) { $('#e2dresult', root).innerHTML = vd('warn', esc(e.message)); }
     };
     refresh();
   },

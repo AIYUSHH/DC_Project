@@ -612,3 +612,79 @@ td.info {
     font-size: 0.9rem;
   }
 }
+
+
+/* Error-detection verdict cards: responsive alternative to the wide comparison table. */
+.err-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0.25rem 0 0.8rem;
+}
+.err-method-card {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line2);
+  border-radius: 12px;
+  background: var(--bg2);
+}
+.err-method-card.is-detected { border-left-color: var(--ok); }
+.err-method-card.is-missed { border-left-color: var(--bad); }
+.err-method-card.is-idle { border-left-color: var(--line2); }
+.err-method-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+.err-method-head strong {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.err-status {
+  flex: none;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  background: var(--surface2);
+  color: var(--muted);
+}
+.err-status.is-detected {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, var(--surface));
+}
+.err-status.is-missed {
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 14%, var(--surface));
+}
+.err-check-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.err-check-values > div {
+  min-width: 0;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: var(--surface);
+}
+.err-check-values small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  margin-bottom: 0.25rem;
+}
+.err-check-values code {
+  display: block;
+  font: 600 0.82rem var(--mono);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+@media (max-width: 640px) {
+  .err-method-grid { grid-template-columns: minmax(0, 1fr); }
+}

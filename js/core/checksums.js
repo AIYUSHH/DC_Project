@@ -93,3 +93,44 @@ export function crc32(a) {
   // Final inversion, then ">>> 0" so the result is an unsigned number.
   return (c ^ 0xffffffff) >>> 0;
 }
+
+
+/** CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, no reflection/xorout. */
+export function crc16(a) {
+  let c = 0xffff;
+  for (const b of a) {
+    c ^= (b & 255) << 8;
+    for (let i = 0; i < 8; i++) c = c & 0x8000 ? ((c << 1) ^ 0x1021) & 0xffff : (c << 1) & 0xffff;
+  }
+  return c;
+}
+
+/** CRC-32C (Castagnoli), reflected polynomial 0x82F63B78. */
+export function crc32c(a) {
+  let c = 0xffffffff;
+  for (const b of a) {
+    c ^= b & 255;
+    for (let i = 0; i < 8; i++) c = c & 1 ? (c >>> 1) ^ 0x82f63b78 : c >>> 1;
+  }
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+/** Fletcher-16 checksum, returned as a 16-bit integer. */
+export function fletcher16(a) {
+  let s1 = 0, s2 = 0;
+  for (const b of a) {
+    s1 = (s1 + (b & 255)) % 255;
+    s2 = (s2 + s1) % 255;
+  }
+  return ((s2 << 8) | s1) >>> 0;
+}
+
+/** Adler-32 checksum. */
+export function adler32(a) {
+  let s1 = 1, s2 = 0;
+  for (const b of a) {
+    s1 = (s1 + (b & 255)) % 65521;
+    s2 = (s2 + s1) % 65521;
+  }
+  return ((s2 << 16) | s1) >>> 0;
+}

@@ -13,7 +13,7 @@
  * Used by: modules/link-layer/error-detection.js
  */
 
-import { cksum, crc32, crc8 } from '../core/checksums.js';
+import { adler32, cksum, crc16, crc32, crc32c, crc8, fletcher16 } from '../core/checksums.js';
 import { bin8, hex } from '../core/encoding.js';
 
 /**
@@ -24,6 +24,10 @@ export const ERR_METHODS = [
   { id: 'sum', name: 'Internet checksum (16-bit)' },
   { id: 'crc8', name: 'CRC-8 (x^8+x^2+x+1)' },
   { id: 'crc32', name: 'CRC-32 (Ethernet)' },
+  { id: 'crc16', name: 'CRC-16/CCITT-FALSE' },
+  { id: 'crc32c', name: 'CRC-32C (Castagnoli)' },
+  { id: 'fletcher16', name: 'Fletcher-16' },
+  { id: 'adler32', name: 'Adler-32' },
 ];
 
 /**
@@ -40,6 +44,10 @@ export function errChecks(bytes, odd) {
     sum: cksum(bytes),
     crc8: crc8(bytes),
     crc32: crc32(bytes),
+    crc16: crc16(bytes),
+    crc32c: crc32c(bytes),
+    fletcher16: fletcher16(bytes),
+    adler32: adler32(bytes),
   };
 }
 
@@ -53,4 +61,6 @@ export const fmtCheck = (id, v) =>
       ? '0x' + v.toString(16).padStart(4, '0')
       : id === 'crc8'
         ? '0x' + hex(v)
-        : '0x' + v.toString(16).padStart(8, '0');
+        : id === 'crc16' || id === 'fletcher16'
+          ? '0x' + v.toString(16).padStart(4, '0')
+          : '0x' + v.toString(16).padStart(8, '0');
