@@ -1,245 +1,169 @@
 /**
  * learning module: Sockets and multiplexing
- *
- * How the OS delivers segments to the right socket, and how NAT rewrites addresses and ports.
- *
- * This file registers one learning module with regMod(). Its mount(root) function builds the screen inside
- * `root` and attaches event handlers; the function mount() returns (if any) is its cleanup, called by the router
- * when the learner leaves, so timers and listeners do not outlive the screen. The protocol logic lives in
- * ../../simulations/ and ../../core/; this file is the user interface for it.
- *
- * Imports:
- *   - ../../core/utils.js (tiny DOM, math and timing helpers): $, $$, pickOne
- *   - ../../core/ui-helpers.js (shared HTML builders: icons, tables, tabs, ladder diagrams): hn, on, panel, sel, tabset, tbl, vd
- *   - ../../core/addressing.js (IPv4/IPv6 address and CIDR calculations): p4
- *   - ../registry.js (learning-module registry and group definitions): regMod
- *
- * Exports: (none)
- *
- * Used by: (imported only for its side effects by app.js)
+ * Interactive teaching simulations for TCP/UDP demultiplexing and stateful NAT/PAT.
  */
-
 import { p4 } from '../../core/addressing.js';
 import { hn, on, panel, sel, tabset, tbl, vd } from '../../core/ui-helpers.js';
 import { $, $$, pickOne } from '../../core/utils.js';
 import { regMod } from '../registry.js';
 
-/* Register "Sockets and multiplexing". The router calls mount(root) when the learner opens #/m/sockets and calls the returned function (if any) when they leave. */
 regMod({
-  id: 'sockets',
-  group: 'adv',
-  title: 'Sockets and multiplexing',
-  desc: 'Many conversations share one address through ports. See how segments find the right socket, and how NAT shares one public address.',
+  id: 'sockets', group: 'adv', title: 'Sockets and multiplexing',
+  desc: 'Explore TCP connection lookup, UDP socket selection, and stateful NAT translation.',
   obj: [
-    'Match an incoming segment to a listening or established socket.',
-    'See why a server can serve thousands of clients on port 443.',
-    'Follow a NAT table as private hosts share one public address.',
+    'Match TCP segments using the complete connection four-tuple.',
+    'Compare wildcard, address-specific, and connected UDP sockets.',
+    'Follow TCP and UDP NAT mappings in both directions.',
   ],
   mount(root) {
     root.innerHTML = '<div id="sktabs"></div>';
     const SERVER = '203.0.113.5';
-    let socks = [
-      ['TCP', '*:22', '*', 'LISTEN'],
-      ['TCP', '*:80', '*', 'LISTEN'],
-      ['TCP', '*:443', '*', 'LISTEN'],
-      ['UDP', '*:53', '*', 'BOUND'],
-      ['UDP', '*:123', '*', 'BOUND'],
+    const initial = () => [
+      { proto:'TCP', lip:'*', lp:22, rip:'*', rp:'*', state:'LISTEN' },
+      { proto:'TCP', lip:'*', lp:80, rip:'*', rp:'*', state:'LISTEN' },
+      { proto:'TCP', lip:'*', lp:443, rip:'*', rp:'*', state:'LISTEN' },
+      { proto:'UDP', lip:'*', lp:53, rip:'*', rp:'*', state:'BOUND' },
+      { proto:'UDP', lip:SERVER, lp:123, rip:'*', rp:'*', state:'BOUND' },
+      { proto:'UDP', lip:SERVER, lp:53000, rip:'8.8.8.8', rp:53, state:'CONNECTED' },
     ];
-    const eph = () => 49152 + Math.floor(Math.random() * 16383),
-      rip = () =>
-        `${pickOne(['198.51.100', '192.0.2', '203.0.113'])}.${1 + Math.floor(Math.random() * 250)}`;
-    const tabs = tabset(
-      $('#sktabs', root),
-      [
-        {
-          label: 'Demultiplexing',
-          render(p) {
-            p.innerHTML =
-              panel(
-                `Server ${SERVER}`,
-                `<p class="hint">A socket is identified by protocol, local address and port, remote address and port. The kernel looks up each arriving segment in this table.</p><div id="skt"></div>`
-              ) +
-              panel(
-                'Send a segment to the server',
-                `<div class="controls"><div class="field"><label for="kp">Protocol</label>${sel(
-                  'kp',
-                  [
-                    ['TCP', 'TCP'],
-                    ['UDP', 'UDP'],
-                  ],
-                  'TCP'
-                )}</div><div class="field"><label for="ki">From IP</label><input id="ki" type="text" value="198.51.100.20"></div>
-            <div class="field"><label for="ks">From port</label><input id="ks" type="number" min="1" max="65535" value="51000"></div><div class="field"><label for="kd">To port</label><input id="kd" type="number" min="1" max="65535" value="443"></div>
-            <div class="field"><label for="kf">TCP segment</label>${sel(
-              'kf',
-              [
-                ['syn', 'SYN (new connection)'],
-                ['data', 'Data on a connection'],
-              ],
-              'syn'
-            )}</div><div class="btnrow"><button class="btn" id="ksend">Deliver</button><button class="btn ghost" id="kmany">Add 5 random clients</button><button class="btn ghost" id="kreset">Reset</button></div></div><div id="kres"></div>`
-              );
-            const draw = hl => {
-              $('#skt', p).innerHTML = tbl(
-                ['Proto', 'Local', 'Remote', 'State'],
-                socks.map((s, i) => [
-                  s[0],
-                  s[1].replace('*', SERVER === '' ? '' : '*'),
-                  s[2],
-                  { h: `<span class="${i === hl ? 'hlrow' : ''}">${s[3]}</span>` },
-                ])
-              );
-              if (hl !== undefined) $$('#skt tbody tr', p)[hl]?.classList.add('hl');
-            };
-            const deliver = () => {
-              const pr = $('#kp', p).value,
-                ip = $('#ki', p).value.trim(),
-                sp = +$('#ks', p).value,
-                dp = +$('#kd', p).value,
-                syn = $('#kf', p).value === 'syn';
-              if (p4(ip) === null || !(sp > 0 && sp < 65536 && dp > 0 && dp < 65536)) {
-                $('#kres', p).innerHTML = vd('bad', 'Check the address and ports.');
-                return;
-              }
-              const remote = `${ip}:${sp}`;
-              if (pr === 'UDP') {
-                const i = socks.findIndex(s => s[0] === 'UDP' && s[1] === '*:' + dp);
-                $('#kres', p).innerHTML =
-                  i >= 0
-                    ? vd(
-                        'ok',
-                        'Delivered to the socket bound to UDP port ' + dp + '.',
-                        'UDP looks only at the destination port. Datagrams from any sender land in the same socket.'
-                      )
-                    : vd(
-                        'bad',
-                        'No socket on UDP port ' + dp + '.',
-                        'The host replies with an ICMP “port unreachable” message.'
-                      );
-                draw(i >= 0 ? i : undefined);
-                return;
-              }
-              const est = socks.findIndex(
-                s =>
-                  s[0] === 'TCP' && s[3] === 'ESTABLISHED' && s[1] === '*:' + dp && s[2] === remote
-              );
-              if (est >= 0) {
-                $('#kres', p).innerHTML = vd(
-                  'ok',
-                  'Delivered to an established connection.',
-                  `The full four-value match (${remote} → ${SERVER}:${dp}) picked this exact socket, even though many others use port ${dp}.`
-                );
-                draw(est);
-                return;
-              }
-              const lis = socks.findIndex(
-                s => s[0] === 'TCP' && s[3] === 'LISTEN' && s[1] === '*:' + dp
-              );
-              if (lis >= 0 && syn) {
-                socks.push(['TCP', '*:' + dp, remote, 'ESTABLISHED']);
-                draw(socks.length - 1);
-                $('#kres', p).innerHTML = vd(
-                  'ok',
-                  'Accepted by the listening socket.',
-                  `A SYN-ACK goes back, and the kernel creates a new ESTABLISHED socket for ${remote}. The listener stays open for the next client.`
-                );
-                return;
-              }
-              if (lis >= 0) {
-                $('#kres', p).innerHTML = vd(
-                  'bad',
-                  'Reset.',
-                  'Data arrived for a connection that does not exist. The listener only accepts a SYN, so the host sends a TCP RST.'
-                );
-                draw(lis);
-                return;
-              }
-              $('#kres', p).innerHTML = vd(
-                'bad',
-                'Connection refused.',
-                `Nothing is listening on TCP port ${dp}, so the host answers with a TCP RST.`
-              );
-              draw();
-            };
-            $('#ksend', p).onclick = deliver;
-            $('#kmany', p).onclick = () => {
-              for (let i = 0; i < 5; i++)
-                socks.push(['TCP', '*:' + pickOne([80, 443]), `${rip()}:${eph()}`, 'ESTABLISHED']);
-              draw();
-              $('#kres', p).innerHTML = vd(
-                'info',
-                'Five clients connected.',
-                'Notice how several rows share one local port and differ only in the remote address or port.'
-              );
-            };
-            $('#kreset', p).onclick = () => {
-              socks = socks.slice(0, 5);
-              $('#kres', p).innerHTML = '';
-              draw();
-            };
+    let sockets = initial();
+    const eph = () => 49152 + Math.floor(Math.random() * 16383);
+    const randIp = () => pickOne(['198.51.100.20','192.0.2.44','203.0.113.80']);
+    const validPort = n => Number.isInteger(n) && n > 0 && n <= 65535;
+    const validIp = ip => p4(ip) !== null;
+    const localOK = (s, ip) => s.lip === '*' || s.lip === ip;
+    const remoteOK = (s, ip, port) => (s.rip === '*' || s.rip === ip) && (s.rp === '*' || Number(s.rp) === port);
+
+    const tabs = tabset($('#sktabs', root), [
+      {
+        label:'TCP demultiplexing',
+        render(p) {
+          p.innerHTML = panel('Server ' + SERVER,
+            '<p class="hint">Established TCP connections are selected by protocol and the complete 4-tuple: source IP, source port, destination IP, destination port. A wildcard listener remains available for new clients.</p><div id="skt"></div>') +
+            panel('Incoming TCP segment',
+              '<div class="controls">' +
+              '<div class="field"><label>Source IP</label><input id="ki" value="198.51.100.20"></div>' +
+              '<div class="field"><label>Source port</label><input id="ks" type="number" min="1" max="65535" value="51000"></div>' +
+              '<div class="field"><label>Destination IP</label><input id="kdi" value="' + SERVER + '"></div>' +
+              '<div class="field"><label>Destination port</label><input id="kd" type="number" min="1" max="65535" value="443"></div>' +
+              '<div class="field"><label>TCP segment</label>' + sel('kf', [['syn','SYN (start)'],['ack','ACK (finish handshake)'],['data','Data'],['fin','FIN (close)']], 'syn') + '</div></div>' +
+              '<div class="btnrow"><button class="btn" id="ksend">Deliver</button><button class="btn ghost" id="kmany">Add 5 established clients</button><button class="btn ghost" id="kreset">Reset</button></div><div id="kres"></div>',
+              'Send SYN, then change the segment to ACK and deliver again to complete the three-way handshake.');
+          const draw = hi => {
+            $('#skt',p).innerHTML = tbl(['Protocol','Local endpoint','Remote endpoint','State'],
+              sockets.map((s,i) => [s.proto,s.lip+':'+s.lp,s.rip+':'+s.rp,s.state]));
+            if (hi !== undefined) $$('#skt tbody tr',p)[hi]?.classList.add('hl');
+          };
+          const deliver = () => {
+            const si=$('#ki',p).value.trim(), sp=Number($('#ks',p).value);
+            const di=$('#kdi',p).value.trim(), dp=Number($('#kd',p).value), kind=$('#kf',p).value;
+            if (!validIp(si)||!validIp(di)||!validPort(sp)||!validPort(dp)) {
+              $('#kres',p).innerHTML=vd('bad','Invalid endpoint.','Enter valid IPv4 addresses and ports from 1 to 65535.'); return;
+            }
+            let i=sockets.findIndex(s=>s.proto==='TCP'&&s.state==='ESTABLISHED'&&localOK(s,di)&&s.lp===dp&&s.rip===si&&Number(s.rp)===sp);
+            if(i>=0) {
+              if(kind==='syn') $('#kres',p).innerHTML=vd('info','Duplicate SYN recognized.','The same 4-tuple already exists. No duplicate connection is created; a real stack may retransmit SYN-ACK.');
+              else if(kind==='fin') { sockets[i].state='CLOSED'; $('#kres',p).innerHTML=vd('ok','FIN matched this connection.','The demo marks it CLOSED; a complete TCP teardown has additional FIN-WAIT and TIME-WAIT states.'); }
+              else $('#kres',p).innerHTML=vd('ok','Delivered to exact established socket.','Matched '+si+':'+sp+' → '+di+':'+dp+'. Other clients using port '+dp+' remain separate.');
+              draw(i); return;
+            }
+            i=sockets.findIndex(s=>s.proto==='TCP'&&s.state==='SYN-RECEIVED'&&localOK(s,di)&&s.lp===dp&&s.rip===si&&Number(s.rp)===sp);
+            if(i>=0) {
+              if(kind==='ack') { sockets[i].state='ESTABLISHED'; $('#kres',p).innerHTML=vd('ok','Three-way handshake complete.','The final ACK changes the child socket to ESTABLISHED. The listening socket remains open.'); }
+              else if(kind==='syn') $('#kres',p).innerHTML=vd('info','SYN retransmission recognized.','A matching half-open connection already exists; no second child socket is created.');
+              else $('#kres',p).innerHTML=vd('warn','Handshake incomplete.','Send the final ACK before application data.');
+              draw(i); return;
+            }
+            const listener=sockets.findIndex(s=>s.proto==='TCP'&&s.state==='LISTEN'&&localOK(s,di)&&s.lp===dp);
+            if(listener>=0&&kind==='syn') {
+              sockets.push({proto:'TCP',lip:di,lp:dp,rip:si,rp:sp,state:'SYN-RECEIVED'});
+              draw(sockets.length-1);
+              $('#kres',p).innerHTML=vd('ok','SYN accepted; SYN-ACK sent.','A distinct half-open socket was created for '+si+':'+sp+'. Choose ACK and deliver again to finish the handshake.'); return;
+            }
+            if(listener>=0) $('#kres',p).innerHTML=vd('bad','No matching connection.','A listener accepts a new SYN; an ACK alone, data, or FIN cannot create a connection.');
+            else $('#kres',p).innerHTML=vd('bad','Connection refused.','No connection or listener matches '+di+':'+dp+'. A real host would normally return TCP RST.');
+            draw(listener>=0?listener:undefined);
+          };
+          $('#ksend',p).onclick=deliver;
+          $('#kmany',p).onclick=()=>{
+            for(let n=0;n<5;n++) sockets.push({proto:'TCP',lip:SERVER,lp:pickOne([80,443]),rip:randIp(),rp:eph(),state:'ESTABLISHED'});
+            draw(); $('#kres',p).innerHTML=vd('info','Five clients added.','Several connections can share a local server port because their remote endpoints differ.');
+          };
+          $('#kreset',p).onclick=()=>{sockets=initial();$('#kres',p).innerHTML='';draw();};
+          draw();
+        }
+      },
+      {
+        label:'UDP demultiplexing',
+        render(p) {
+          p.innerHTML=panel('UDP socket table',
+            '<p class="hint">UDP has no handshake. Delivery commonly uses the local destination address and port. A connected UDP socket can additionally filter on its configured remote peer. Overlapping binds and reuse are OS-dependent.</p><div id="udps"></div>')+
+            panel('Incoming UDP datagram',
+            '<div class="controls"><div class="field"><label>Source IP</label><input id="ui" value="198.51.100.20"></div>'+
+            '<div class="field"><label>Source port</label><input id="us" type="number" value="53000"></div>'+
+            '<div class="field"><label>Destination IP</label><input id="udi" value="'+SERVER+'"></div>'+
+            '<div class="field"><label>Destination port</label><input id="ud" type="number" value="53"></div></div>'+
+            '<div class="btnrow"><button class="btn" id="usend">Deliver datagram</button><button class="btn ghost" id="uadd">Add IP-specific socket</button><button class="btn ghost" id="ureset">Reset UDP sockets</button></div><div id="ures"></div>',
+            'Try port 53, then add a socket bound only to the server IP on port 5353.');
+          const draw=()=>{$('#udps',p).innerHTML=tbl(['Local endpoint','Remote filter','Mode'],sockets.filter(s=>s.proto==='UDP').map(s=>[s.lip+':'+s.lp,s.rip+':'+s.rp,s.state]));};
+          $('#usend',p).onclick=()=>{
+            const si=$('#ui',p).value.trim(),sp=Number($('#us',p).value),di=$('#udi',p).value.trim(),dp=Number($('#ud',p).value);
+            if(!validIp(si)||!validIp(di)||!validPort(sp)||!validPort(dp)){ $('#ures',p).innerHTML=vd('bad','Invalid endpoint.','Use valid IPv4 addresses and ports from 1 to 65535.');return; }
+            const matches=sockets.filter(s=>s.proto==='UDP'&&s.lp===dp&&localOK(s,di)&&remoteOK(s,si,sp));
+            matches.sort((a,b)=>Number(b.lip!=='*')-Number(a.lip!=='*')+Number((b.rip!=='*'||b.rp!=='*'))-Number((a.rip!=='*'||a.rp!=='*')));
+            if(!matches.length) $('#ures',p).innerHTML=vd('bad','No matching UDP socket.','The host may return ICMP Destination Unreachable (Port Unreachable), depending on policy.');
+            else {const s=matches[0];$('#ures',p).innerHTML=vd('ok','Delivered to '+s.state.toLowerCase()+' UDP socket '+s.lip+':'+s.lp+'.',s.state==='CONNECTED'?'The connected socket also matched remote peer '+s.rip+':'+s.rp+'.':s.lip==='*'?'The wildcard binding accepts any local IPv4 destination on this port, subject to OS reuse rules.':'The destination IP matched this socket-specific binding.');}
+          };
+          $('#uadd',p).onclick=()=>{if(!sockets.some(s=>s.proto==='UDP'&&s.lip===SERVER&&s.lp===5353))sockets.push({proto:'UDP',lip:SERVER,lp:5353,rip:'*',rp:'*',state:'BOUND'});$('#ud',p).value='5353';$('#udi',p).value=SERVER;$('#ures',p).innerHTML=vd('info','IP-specific socket added.','It listens only on '+SERVER+':5353.');draw();};
+          $('#ureset',p).onclick=()=>{sockets=sockets.filter(s=>s.proto!=='UDP').concat(initial().filter(s=>s.proto==='UDP'));$('#ures',p).innerHTML='';draw();};
+          draw();
+        }
+      },
+      {
+        label:'NAT / PAT',
+        render(p) {
+          const PUB='198.51.100.7', hosts=['192.168.1.10','192.168.1.11','192.168.1.12'];
+          let maps=[],nextPort=40000,nextId=1;
+          const prune=()=>{const now=Date.now();maps=maps.filter(m=>m.expires>now);};
+          const draw=()=>{
+            prune();
+            $('#nt',p).innerHTML=maps.length?tbl(['ID','Protocol','Inside','Public','Remote peer','Expires'],maps.map(m=>[m.id,m.proto,m.ip+':'+m.insidePort,PUB+':'+m.publicPort,m.remoteIp+':'+m.remotePort,Math.max(0,Math.ceil((m.expires-Date.now())/1000))+'s'])):hn('The NAT table is empty. Open a connection from one of the hosts.');
+            const q=$('#nreply',p),old=q.value;
+            q.innerHTML='<option value="">Choose a mapping</option>'+maps.map(m=>'<option value="'+m.id+'">#'+m.id+' '+m.proto+' '+m.ip+':'+m.insidePort+' ↔ '+m.remoteIp+':'+m.remotePort+'</option>').join('');
+            if(maps.some(m=>String(m.id)===old))q.value=old;
+          };
+          p.innerHTML=panel('One public address for many hosts',
+            '<p class="hint">Stateful PAT records protocol, inside endpoint, public endpoint and remote endpoint. Return traffic must match an active mapping. Demo timeouts: TCP 120 seconds; UDP 30 seconds.</p>'+
+            '<div class="controls"><div class="field"><label>Protocol</label>'+sel('np',[['TCP','TCP'],['UDP','UDP']],'TCP')+'</div>'+
+            '<div class="field"><label>Remote IP</label><input id="nri" value="93.184.216.34"></div><div class="field"><label>Remote port</label><input id="nrp" type="number" value="443"></div></div>'+
+            '<div class="btnrow wrap">'+hosts.map(h=>'<button class="btn ghost sm" data-host="'+h+'">'+h+' opens connection</button>').join('')+'</div><div id="nt"></div>'+
+            '<div class="field"><label>Incoming reply for mapping</label><select id="nreply"><option value="">No mappings yet</option></select></div>'+
+            '<div class="btnrow wrap"><button class="btn" id="nrep">Simulate matching reply</button><button class="btn ghost" id="ncold">Unsolicited inbound packet</button><button class="btn ghost" id="nexpire">Expire oldest mapping</button><button class="btn ghost" id="nclr">Clear table</button></div><div id="nlog"></div>',
+            'Create mappings for different inside hosts and remote servers, then simulate return traffic.');
+          on(p,'click','[data-host]',(e,b)=>{
+            prune();const proto=$('#np',p).value,remoteIp=$('#nri',p).value.trim(),remotePort=Number($('#nrp',p).value);
+            if(!validIp(remoteIp)||!validPort(remotePort)){ $('#nlog',p).innerHTML=vd('bad','Invalid remote endpoint.','Enter a valid IPv4 address and port.');return; }
+            const insidePort=eph(),publicPort=nextPort++,ttl=proto==='TCP'?120000:30000;
+            const m={id:nextId++,proto,ip:b.dataset.host,insidePort,publicPort,remoteIp,remotePort,expires:Date.now()+ttl};
+            maps.push(m);draw();$('#nreply',p).value=String(m.id);
+            $('#nlog',p).innerHTML=vd('ok','Outbound packet translated.',proto+' '+m.ip+':'+insidePort+' → '+remoteIp+':'+remotePort+' leaves as '+PUB+':'+publicPort+' → '+remoteIp+':'+remotePort+'. The mapping is stored for '+(ttl/1000)+' seconds.');
+          });
+          $('#nrep',p).onclick=()=>{
+            prune();const id=Number($('#nreply',p).value),m=maps.find(x=>x.id===id);
+            if(!m){$('#nlog',p).innerHTML=vd('warn','No active mapping selected.','Create or select an active mapping.');draw();return;}
+            const found=maps.find(x=>x.proto===m.proto&&x.publicPort===m.publicPort&&x.remoteIp===m.remoteIp&&x.remotePort===m.remotePort);
+            if(!found){$('#nlog',p).innerHTML=vd('bad','No reverse mapping found.','The incoming packet did not match an active translation entry.');return;}
+            found.expires=Date.now()+(found.proto==='TCP'?120000:30000);
+            $('#nlog',p).innerHTML=vd('ok','Reply translated back.',found.proto+' '+found.remoteIp+':'+found.remotePort+' → '+PUB+':'+found.publicPort+' matches mapping #'+found.id+'. Destination rewritten to '+found.ip+':'+found.insidePort+'.');
             draw();
-          },
-        },
-        {
-          label: 'NAT',
-          render(p) {
-            const PUB = '198.51.100.7',
-              HOSTS = ['192.168.1.10', '192.168.1.11', '192.168.1.12'],
-              REMOTE = '93.184.216.34:443';
-            let map = [],
-              nextPort = 40000;
-            p.innerHTML = panel(
-              'One public address for many hosts',
-              `<p class="hint">The router rewrites the source address and port of outgoing packets and remembers the mapping so it can rewrite replies.</p>
-          <div class="btnrow wrap">${HOSTS.map(h => `<button class="btn ghost sm" data-h="${h}">${h} opens a connection</button>`).join('')}</div><div id="nt"></div>
-          <div class="btnrow wrap"><button class="btn ghost sm" id="nrep">Server replies to latest mapping</button><button class="btn ghost sm" id="ncold">Unsolicited packet from outside</button><button class="btn ghost sm" id="nclr">Clear table</button></div><div id="nlog"></div>`
-            );
-            const draw = () => {
-              $('#nt', p).innerHTML = map.length
-                ? tbl(
-                    ['Protocol', 'Inside (private)', 'Outside (public)', 'Remote'],
-                    map.map(m => ['TCP', `${m.ip}:${m.sp}`, `${PUB}:${m.ep}`, REMOTE])
-                  )
-                : hn('The NAT table is empty. Open a connection from one of the hosts.');
-            };
-            on(p, 'click', '[data-h]', (e, b) => {
-              const m = { ip: b.dataset.h, sp: eph(), ep: nextPort++ };
-              map.push(m);
-              draw();
-              $('#nlog', p).innerHTML = vd(
-                'ok',
-                'Outbound packet translated.',
-                `${m.ip}:${m.sp} → ${REMOTE} leaves as ${PUB}:${m.ep} → ${REMOTE}. The server only ever sees the public address.`
-              );
-            });
-            $('#nrep', p).onclick = () => {
-              const m = map[map.length - 1];
-              $('#nlog', p).innerHTML = m
-                ? vd(
-                    'ok',
-                    'Reply translated back.',
-                    `${REMOTE} → ${PUB}:${m.ep} matches a mapping, so the router rewrites the destination to ${m.ip}:${m.sp} and delivers it.`
-                  )
-                : vd('warn', 'No mapping yet.', 'Open a connection first.');
-            };
-            $('#ncold', p).onclick = () => {
-              $('#nlog', p).innerHTML = vd(
-                'bad',
-                'Dropped.',
-                `A packet to ${PUB}:${nextPort + 123} has no mapping, so the router does not know which inside host it is for and discards it. This is why NAT blocks unsolicited inbound connections by default.`
-              );
-            };
-            $('#nclr', p).onclick = () => {
-              map = [];
-              $('#nlog', p).innerHTML = '';
-              draw();
-            };
-            draw();
-          },
-        },
-      ],
-      0
-    );
+          };
+          $('#ncold',p).onclick=()=>{prune();$('#nlog',p).innerHTML=vd('bad','Unsolicited inbound packet dropped.','Packet to '+PUB+':'+(nextPort+123)+' has no active translation entry, so there is no inside endpoint to forward it to.');};
+          $('#nexpire',p).onclick=()=>{prune();if(!maps.length){$('#nlog',p).innerHTML=vd('warn','No mappings to expire.','Create an outbound mapping first.');return;}const m=maps.shift();$('#nlog',p).innerHTML=vd('info','Mapping #'+m.id+' expired.','Later inbound packets for this mapping will no longer be translated.');draw();};
+          $('#nclr',p).onclick=()=>{maps=[];$('#nlog',p).innerHTML='';draw();};
+          draw();
+        }
+      }
+    ],0);
     return () => tabs.destroy();
-  },
+  }
 });
