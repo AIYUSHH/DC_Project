@@ -227,7 +227,7 @@ export const TROUBLE = [
     brief: 'The intranet server moved, but this laptop continues to connect to the previous address.',
     cli: { ip: '10.0.1.20', p: 24, gw: '10.0.1.1', dns: '10.0.1.2' },
     local: ['10.0.1.1', '10.0.1.2', '10.0.1.5'], dnsUp: true,
-    hosts: { 'example.com': '93.184.216.34', 'intranet.local': '10.0.1.9' }, hops: HOPS, blocked: [], cachedHosts: { 'intranet.local': '10.0.1.9' },
+    hosts: { 'example.com': '93.184.216.34', 'intranet.local': '10.0.1.5' }, hops: HOPS, blocked: [], cachedHosts: { 'intranet.local': '10.0.1.9' },
     hints: ['Run nslookup intranet.local and inspect the returned address.', 'Compare that address with the known current server address 10.0.1.5.', 'The client is using a stale cached DNS answer. Flush the DNS cache after the record is corrected.'],
     why: 'The cached DNS entry points to 10.0.1.9 instead of the current server at 10.0.1.5. Flush the local DNS cache and refresh the record.'
   },
@@ -254,10 +254,11 @@ export function netsim(sc) {
     M = mk(C.p),
     same = ip => (p4(ip) & M) >>> 0 === (p4(C.ip) & M) >>> 0,
     onLinkGw = same(C.gw);
+  let dnsCache = { ...(sc.cachedHosts || {}) };
   const resolve = n => {
     if (p4(n) !== null) return { ip: n };
     if (!sc.dnsUp) return { err: 'timeout' };
-    return sc.hosts[n] ? { ip: sc.hosts[n] } : { err: 'nx' };
+    return dnsCache[n] ? { ip: dnsCache[n], cached: true } : sc.hosts[n] ? { ip: sc.hosts[n] } : { err: 'nx' };
   };
   const reach = ip => {
     if (ip === C.ip || ip === '127.0.0.1') return { ok: true, local: true };
@@ -296,8 +297,10 @@ export function netsim(sc) {
         `${ip4((p4(C.ip) & mk(C.p)) >>> 0)}/${C.p} dev eth0 proto kernel scope link src ${C.ip}`,
       ];
     if (c === 'cat' && a[1] === '/etc/resolv.conf') return [`nameserver ${C.dns}`];
-    if ((c === 'ipconfig' && a[1] === '/flushdns') || (c === 'resolvectl' && a[1] === 'flush-caches'))
+    if ((c === 'ipconfig' && a[1] === '/flushdns') || (c === 'resolvectl' && a[1] === 'flush-caches')) {
+      dnsCache = {};
       return ['Successfully flushed the DNS resolver cache.'];
+    }
     if (c === 'ping' && sc.mtu && Number(a.find(x => /^-s\\d+$/.test(x))?.slice(2) || a[a.indexOf('-s') + 1] || 56) + 28 > sc.mtu)
       return ['ping: local error: message too long, mtu=' + sc.mtu, '100% packet loss'];
     if (c === 'ifconfig') return cmd('ip addr');
@@ -306,7 +309,7 @@ export function netsim(sc) {
     if (!arg) return [`${c}: missing target`];
     if (c === 'nslookup') {
       if (!sc.dnsUp) return [';; connection timed out; no servers could be reached'];
-      const ip = sc.hosts[arg];
+      const ip = dnsCache[arg] || sc.hosts[arg];
       if (!ip) return [`** server can't find ${arg}: NXDOMAIN`];
       return [
         `Server:\t\t${C.dns}`,
