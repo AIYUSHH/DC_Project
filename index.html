@@ -86,9 +86,19 @@
         </form>
         <p class="login-security-note">Your account is managed securely by Firebase Authentication. Never share your password.</p>
       </div>
+      <div class="auth-loading-overlay" id="auth-loading" role="status" aria-live="polite" aria-atomic="true">
+        <span class="auth-loading-spinner" aria-hidden="true"></span>
+        <strong id="auth-loading-title">Checking your session...</strong>
+        <span class="auth-loading-detail">Please wait while we securely connect to your account.</span>
+      </div>
     </section>
     <a class="skip" href="#view">Skip to content</a>
     <div class="app" hidden>
+      <div class="app-auth-loading" id="app-auth-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+        <span class="auth-loading-spinner" aria-hidden="true"></span>
+        <strong id="app-auth-loading-title">Please wait...</strong>
+        <span class="auth-loading-detail">This may take a few moments.</span>
+      </div>
       <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="brand">
   <img
@@ -405,6 +415,11 @@
         </footer>
       </div>
       <dialog class="password-dialog" id="changePasswordDialog" aria-labelledby="passwordDialogTitle">
+        <div class="password-auth-loading" id="password-auth-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+          <span class="auth-loading-spinner" aria-hidden="true"></span>
+          <strong>Updating your password...</strong>
+          <span class="auth-loading-detail">Please wait while Firebase securely updates your account.</span>
+        </div>
         <form id="changePasswordForm">
           <h2 id="passwordDialogTitle">Change Password</h2>
           <label for="currentPassword">Current Password

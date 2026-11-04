@@ -49,7 +49,49 @@ const submitBtn = document.getElementById('login-submit');
 const rememberMe = document.getElementById('remember-me');
 const forgotPasswordLink = document.getElementById('forgot-password');
 
+const appAuthLoading = document.getElementById('app-auth-loading');
+const appAuthLoadingTitle = document.getElementById('app-auth-loading-title');
+const passwordAuthLoading = document.getElementById('password-auth-loading');
+
+function showPasswordAuthLoading() {
+  passwordAuthLoading.hidden = false;
+  changePasswordDialog.setAttribute('aria-busy', 'true');
+}
+
+function hidePasswordAuthLoading() {
+  passwordAuthLoading.hidden = true;
+  changePasswordDialog.removeAttribute('aria-busy');
+}
+
+function showAppAuthLoading(message) {
+  appAuthLoadingTitle.textContent = message;
+  appAuthLoading.hidden = false;
+  appScreen.setAttribute('aria-busy', 'true');
+}
+
+function hideAppAuthLoading() {
+  appAuthLoading.hidden = true;
+  appScreen.removeAttribute('aria-busy');
+}
+
 let authMode = 'signin';
+
+const authLoading = document.getElementById('auth-loading');
+const authLoadingTitle = document.getElementById('auth-loading-title');
+
+function showAuthLoading(message = 'Signing in...') {
+  authLoadingTitle.textContent = message;
+  authLoading.hidden = false;
+  loginScreen.setAttribute('aria-busy', 'true');
+}
+
+function hideAuthLoading() {
+  authLoading.hidden = true;
+  loginScreen.removeAttribute('aria-busy');
+}
+
+// Firebase restores a persisted session asynchronously after the page loads.
+showAuthLoading('Checking your session...');
 
 function setMessage(message, kind = 'error') {
   errorBox.textContent = message;
@@ -70,6 +112,7 @@ function renderProfile(user) {
 }
 
 function showApp(user = auth.currentUser) {
+  hideAuthLoading();
   // Keep a durable signal in case the application module finishes loading after this module.
   window.__bitSecureAuthenticated = true;
   if (user) renderProfile(user);
@@ -80,6 +123,7 @@ function showApp(user = auth.currentUser) {
 }
 
 function showLogin({ focus = false } = {}) {
+  hideAppAuthLoading();
   window.__bitSecureAuthenticated = false;
   appScreen.hidden = true;
   loginScreen.hidden = false;
@@ -160,6 +204,8 @@ loginForm.addEventListener('submit', async event => {
   }
 
   submitBtn.disabled = true;
+  let keepAuthLoading = false;
+  showAuthLoading(authMode === 'signup' ? 'Creating your account...' : 'Signing in...');
   try {
     if (authMode === 'signup') {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -179,11 +225,14 @@ loginForm.addEventListener('submit', async event => {
       : browserSessionPersistence;
     await setPersistence(auth, persistence);
 
+    keepAuthLoading = true;
+    showAuthLoading('Verifying your account...');
     const credential = await signInWithEmailAndPassword(auth, email, password);
     if (!credential.user.emailVerified) {
       // A retry here gives users another verification email if the original was missed.
       await sendEmailVerification(credential.user);
       await signOut(auth);
+      keepAuthLoading = false;
       setMessage('Your email is not verified yet. We sent a fresh verification email. Check your inbox and spam folder, verify your address, then sign in again.');
       return;
     }
@@ -191,6 +240,7 @@ loginForm.addEventListener('submit', async event => {
     setMessage('');
     // onAuthStateChanged opens the app once Firebase confirms the verified session.
   } catch (error) {
+    keepAuthLoading = false;
     // If signup created an unverified account but a later step failed, clear that temporary session.
     if (auth.currentUser && !auth.currentUser.emailVerified) {
       await signOut(auth).catch(() => {});
@@ -198,6 +248,7 @@ loginForm.addEventListener('submit', async event => {
     setMessage(friendlyError(error));
   } finally {
     submitBtn.disabled = false;
+    if (!keepAuthLoading) hideAuthLoading();
   }
 });
 
@@ -340,6 +391,7 @@ changePasswordForm.addEventListener('submit', async event => {
 
   passwordChangeSubmit.disabled = true;
   setPasswordMessage('');
+  showPasswordAuthLoading();
   try {
     const credential = EmailAuthProvider.credential(user.email, currentPassword);
     await reauthenticateWithCredential(user, credential);
@@ -357,18 +409,26 @@ changePasswordForm.addEventListener('submit', async event => {
     setPasswordMessage(messages[error?.code] || 'Unable to change the password. Please try again.');
   } finally {
     passwordChangeSubmit.disabled = false;
+    hidePasswordAuthLoading();
   }
 });
 
 logoutBtn.addEventListener('click', async () => {
+  logoutBtn.disabled = true;
+  closeProfileMenu();
+  showAppAuthLoading('Signing you out...');
   try {
     // Flush this account's latest progress before the Firebase session is cleared.
     await flushProgressSync();
     await signOut(auth);
     setMessage('You have been signed out.', 'success');
+    hideAppAuthLoading();
     showLogin({ focus: true });
   } catch (error) {
+    hideAppAuthLoading();
     setMessage(friendlyError(error));
+  } finally {
+    logoutBtn.disabled = false;
   }
 });
 
@@ -379,8 +439,14 @@ localStorage.removeItem('bitsecure.demo-accounts');
 
 onAuthStateChanged(auth, async user => {
   if (user?.emailVerified) {
-    // Do not expose the application until this account's cloud/local progress has been restored.
-    await activateProgressForUser(user.uid);
+    // Keep the loader visible while the account's cloud/local progress is restored.
+    showAuthLoading('Restoring your learning progress...');
+    try {
+      await activateProgressForUser(user.uid);
+    } catch (error) {
+      // A progress-sync issue should not leave authentication stuck behind a spinner.
+      console.warn('Unable to fully restore learning progress:', error);
+    }
 
     // Auth events can overlap while a slow Firestore request is in flight. Do not display stale
     // progress if the user signed out or changed accounts before this restore finished.
@@ -391,6 +457,7 @@ onAuthStateChanged(auth, async user => {
 
   // Clear the in-memory state on sign-out so it cannot be reused by the next account.
   deactivateProgressUser();
+  hideAuthLoading();
   showLogin();
   // Unverified users remain on the login screen. Signup signs out after sending
   // the verification email; sign-in explicitly signs out any unverified account.
