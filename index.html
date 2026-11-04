@@ -84,6 +84,15 @@
           <p class="login-error" id="login-error" role="alert" aria-live="polite"></p>
           <button class="btn login-submit" id="login-submit" type="submit">Sign In <span aria-hidden="true">→</span></button>
         </form>
+        <section class="verification-panel" id="verification-panel" aria-live="polite" hidden>
+          <div class="verification-icon" aria-hidden="true">✉</div>
+          <h2>Check your email</h2>
+          <p class="verification-lead">Your account has been created successfully. We've sent a verification link to:</p>
+          <p class="verification-address" id="verification-email"></p>
+          <p class="verification-help">Open the message and click the verification link to activate your account. If it isn't in your inbox, check your Spam or Junk folder.</p>
+          <button class="btn login-submit" id="verification-continue" type="button">Continue to Sign In <span aria-hidden="true">→</span></button>
+          <p class="verification-resend-note">Didn't receive the email? Continue to Sign In and try signing in. If your address is still unverified, we'll send a fresh verification email.</p>
+        </section>
         <p class="login-security-note">Your account is managed securely by Firebase Authentication. Never share your password.</p>
       </div>
       <div class="auth-loading-overlay" id="auth-loading" role="status" aria-live="polite" aria-atomic="true">

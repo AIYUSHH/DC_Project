@@ -48,6 +48,9 @@ const intro = document.getElementById('login-intro');
 const submitBtn = document.getElementById('login-submit');
 const rememberMe = document.getElementById('remember-me');
 const forgotPasswordLink = document.getElementById('forgot-password');
+const verificationPanel = document.getElementById('verification-panel');
+const verificationEmail = document.getElementById('verification-email');
+const verificationContinue = document.getElementById('verification-continue');
 
 const appAuthLoading = document.getElementById('app-auth-loading');
 const appAuthLoadingTitle = document.getElementById('app-auth-loading-title');
@@ -132,6 +135,9 @@ function showLogin({ focus = false } = {}) {
 }
 
 function setMode(mode) {
+  verificationPanel.hidden = true;
+  document.querySelector('.auth-tabs').hidden = false;
+  loginForm.hidden = false;
   authMode = mode;
   const signingUp = mode === 'signup';
   signInTab.classList.toggle('is-active', !signingUp);
@@ -152,6 +158,26 @@ function setMode(mode) {
     : 'Sign In <span aria-hidden="true">→</span>';
   setMessage('');
 }
+
+function showVerificationNotice(email) {
+  verificationEmail.textContent = email;
+  document.querySelector('.auth-tabs').hidden = true;
+  loginForm.hidden = true;
+  verificationPanel.hidden = false;
+  document.getElementById('login-title').textContent = 'One last step!';
+  intro.textContent = 'Your account is ready. Verify your email address to activate it.';
+  setMessage('');
+}
+
+verificationContinue.addEventListener('click', () => {
+  verificationPanel.hidden = true;
+  document.querySelector('.auth-tabs').hidden = false;
+  loginForm.hidden = false;
+  setMode('signin');
+  emailInput.value = verificationEmail.textContent;
+  passwordInput.value = '';
+  setMessage('Sign in after verifying your email. If you have not received the message, signing in will send a fresh verification email.');
+});
 
 function friendlyError(error) {
   const messages = {
@@ -213,10 +239,7 @@ loginForm.addEventListener('submit', async event => {
       await sendEmailVerification(credential.user);
       await signOut(auth);
 
-      setMode('signin');
-      emailInput.value = email;
-      passwordInput.value = '';
-      setMessage('Account created. Check your inbox and verify your email before signing in.', 'success');
+      showVerificationNotice(email);
       return;
     }
 

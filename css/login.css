@@ -159,3 +159,13 @@
 }
 .password-auth-loading[hidden] { display: none !important; }
 .password-auth-loading strong { font-size: 1.05rem; }
+
+
+/* Dedicated post-registration email-verification confirmation. */
+.verification-panel[hidden] { display: none !important; }
+.verification-panel { display: grid; gap: 14px; text-align: center; }
+.verification-icon { display: grid; place-items: center; width: 62px; height: 62px; margin: 2px auto 0; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 2rem; }
+.verification-panel h2 { margin: 0; font-size: 1.55rem; letter-spacing: -.035em; }
+.verification-lead, .verification-help, .verification-resend-note { margin: 0; color: var(--muted); line-height: 1.6; font-size: .9rem; }
+.verification-address { margin: -5px 0 0; padding: 11px 12px; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg2); color: var(--text); font-weight: 700; }
+.verification-resend-note { font-size: .8rem; }
