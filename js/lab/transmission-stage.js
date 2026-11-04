@@ -33,12 +33,20 @@ import { setTop } from './top-stats.js';
  *
  * @returns {Promise} resolves when the animation finishes.
  */
-const fly = (el, to, ms) =>
-  el.animate([{ left: el.style.left || '0%' }, { left: to }], {
+const fly = async (el, to, ms) => {
+  // Never let a previous fill-forwards animation compete with this movement.
+  el.getAnimations().forEach(animation => animation.cancel());
+  const from = el.style.left || '0%';
+  const animation = el.animate([{ left: from }, { left: to }], {
     duration: REDUCE ? 30 : ms,
     easing: 'ease-in-out',
-    fill: 'forwards',
-  }).finished;
+    fill: 'none',
+  });
+  await animation.finished;
+  // Commit the final position to the element itself before disposing the animation.
+  el.style.left = to;
+  animation.cancel();
+};
 
 /**
  * Adds a line to the event log and (optionally) stores it in the current run so it can be redrawn later.
@@ -53,20 +61,30 @@ function logLine(t, cls, msg, store = true) {
 /**
  * Stage 3 set-up: draws the queues and, if a run already exists, redraws its log and final state.
  */
+function senderQueueMarkup() {
+  if (S.dataType !== 'image' || S.P.length <= 48) {
+    return S.P.map((_, i) => `<span class="chip c${i % 4}" id="q${i}">P${i + 1}</span>`).join('');
+  }
+  return '<span class="hint">Image transfer · ' + S.P.length.toLocaleString() + ' packets processed in batches (sample shown)</span>' +
+    S.P.slice(0, 12).map((_, i) => `<span class="chip c${i % 4}" id="q${i}">P${i + 1}</span>`).join('');
+}
+
 export function labPrepare() {
   if (!S.P.length) labSplit();
-  $('#sq').innerHTML = S.P.map(
-    (_, i) => `<span class="chip c${i % 4}" id="q${i}">P${i + 1}</span>`
-  ).join('');
+  $('#sq').innerHTML = senderQueueMarkup();
   $('#rq').innerHTML = '';
   $('#log').innerHTML = '';
   const r = S.run;
   if (r) {
     r.log.forEach(l => logLine(l[0], l[1], l[2], false));
-    S.P.forEach((_, i) => $('#q' + i).classList.add(r.got[i] ? 'ok' : 'bad'));
-    $('#rq').innerHTML = r.arr
-      .map(i => `<span class="chip c${i % 4} ok live">P${i + 1}</span>`)
-      .join('');
+    const queueLimit = S.dataType === 'image' ? 12 : S.P.length;
+    for (let i = 0; i < queueLimit; i++) {
+      const chip = $('#q' + i);
+      if (chip) chip.classList.add(r.got[i] ? 'ok' : 'bad');
+    }
+    const arrivedPreview = r.arr.slice(0, S.dataType === 'image' ? 24 : r.arr.length);
+    $('#rq').innerHTML = (r.arr.length > arrivedPreview.length ? '<span class="hint">' + r.arr.length.toLocaleString() + ' packets received; sample shown</span>' : '') +
+      arrivedPreview.map(i => `<span class="chip c${i % 4} ok live">P${i + 1}</span>`).join('');
     const miss = r.got.filter(x => !x).length;
     $('#sp').textContent = r.stopped ? 'Stopped' : miss ? 'Gave up' : 'All sent';
     $('#rp').textContent = miss ? `${miss} missing` : 'Everything arrived';
@@ -108,37 +126,41 @@ export async function transmit() {
   if (S.busy || !S.up) return;
   if (!S.P.length) labSplit();
   if (!S.P.length) {
-    $('#st').textContent = 'Type a message first, there is nothing to send.';
+    $('#st').textContent = 'Enter text or choose an image first.';
     return;
   }
-  // Cancellation token. Starting a run bumps the shared S.tok; the Stop button, link toggle and
-  // route changes bump it again, so this run can tell it is no longer current.
+  const imageMode = S.dataType === 'image';
   const tok = ++S.tok;
   S.busy = true;
-  // True while nobody has cancelled this run.
   const alive = () => tok === S.tok;
-  const P = S.P,
-    order = P.map((_, i) => i);
+  const P = S.P;
+  const order = Array.from({ length: P.length }, (_, i) => i);
   if ($('#ord').value === 'r') {
     order.reverse();
     flag('reverse');
   }
-  const loss = +$('#loss').value / 100,
-    corrupt = +$('#corr').value / 100,
-    maxRetry = +$('#retries').value,
-    spd = +$('#spd').value * (S.dataType === 'image' ? 20 : 1);
+  const loss = +$('#loss').value / 100;
+  const corrupt = +$('#corr').value / 100;
+  const maxRetry = +$('#retries').value;
+  const speed = +$('#spd').value;
+  // Image packets are grouped into small visible patches. Each patch gets a
+  // deliberate travel animation so learners can follow it across the link.
+  const batchSize = imageMode ? 16 : 1;
+  const imagePatchDuration = Math.max(650, 900 / speed);
   S.run = {
     arr: [],
     got: Array(P.length).fill(null),
     retries: 0,
     log: [],
     cfg: { loss: +$('#loss').value, corrupt: +$('#corr').value, order: $('#ord').value },
+    sent: 0,
+    failed: 0,
+    batchSize
   };
   const run = S.run;
   labPrepareQuiet();
   syncGo();
-  const pkt = $('#pkt'),
-    ack = $('#ack');
+  const pkt = $('#pkt'), ack = $('#ack');
   $('#sp').textContent = 'Transmitting';
   $('#rp').textContent = 'Waiting';
   const reset = el => {
@@ -147,10 +169,10 @@ export async function transmit() {
     el.style.opacity = 0;
     el.className = 'fly';
     el.style.background = '';
+    el.style.color = '';
   };
   const stopped = () => {
-    reset(pkt);
-    reset(ack);
+    reset(pkt); reset(ack);
     S.busy = false;
     if (S.stopTok === tok) {
       run.stopped = true;
@@ -159,117 +181,231 @@ export async function transmit() {
       syncGo();
     } else if (S.run === run) S.run = null;
   };
-  logLine(
-    'START',
-    '',
-    `Sending ${P.length} packet${P.length > 1 ? 's' : ''} at ${run.cfg.loss}% loss and ${run.cfg.corrupt}% corruption.`
-  );
-  for (const i of order) {
-    let ok = false;
-    for (let a = 0; a <= maxRetry && !ok; a++) {
-      const q = $('#q' + i);
-      // Each attempt rolls for loss independently (a down link loses everything). Corruption is
-      // only rolled for packets that were not lost.
-      const isLost = !S.up || Math.random() < loss,
-        isBad = !isLost && Math.random() < corrupt;
-      q.classList.add('live');
-      pkt.textContent = 'P' + (i + 1);
-      pkt.className = 'fly';
-      pkt.style.opacity = 1;
-      pkt.style.background = '';
-      if (a) {
-        run.retries++;
-        setTop(undefined, undefined, run.retries);
-        flag('retry');
-      }
-      $('#st').textContent = a
-        ? `Retransmitting packet ${i + 1} (retry ${a} of ${maxRetry})...`
-        : `Sending packet ${i + 1}...`;
-      logLine(
-        a ? 'RETRY' : 'SEND',
-        a ? 're' : '',
-        `Packet ${i + 1} ${a ? 'sent again' : 'sent'}${!S.up ? ' while the link is down' : ''}.`
-      );
-      // A lost packet only travels halfway along the wire before it vanishes.
-      await fly(pkt, isLost ? '50%' : '100%', 900 / spd);
-      // After every await, check whether the run was cancelled while it was paused; if so, clean
-      // up and leave.
-      if (!alive()) return stopped();
-      if (isLost) {
-        pkt.className = 'fly pop';
-        await sleep(450 / spd);
-        if (!alive()) return stopped();
-        reset(pkt);
-        q.classList.remove('live');
-        q.classList.add('bad');
-        $('#st').textContent = `Packet ${i + 1} was lost. No ACK came back.`;
-        logLine('LOST', 'bad', `Packet ${i + 1} vanished on the link.`);
-        await sleep(550 / spd);
-        if (!alive()) return stopped();
-        q.classList.remove('bad');
-        continue;
-      }
-      if (isBad) {
-        const good = packetCrc(i, P[i]),
-          // Simulated corruption: flip one random bit of the CRC (XOR with a single set bit), so
-          // the receiver's computed value no longer matches.
-          seen = good ^ (1 << Math.floor(Math.random() * 8));
-        pkt.style.background = 'var(--coral)';
-        $('#st').textContent = `Packet ${i + 1} arrived damaged. CRC mismatch, so it is discarded.`;
-        logLine(
-          'CRC',
-          'bad',
-          `Packet ${i + 1} failed its check: expected ${hex(good)}, computed ${hex(seen)}. Discarded, no ACK.`
-        );
-        await sleep(700 / spd);
-        if (!alive()) return stopped();
-        reset(pkt);
-        q.classList.remove('live');
-        q.classList.add('bad');
-        await sleep(450 / spd);
-        if (!alive()) return stopped();
-        q.classList.remove('bad');
-        continue;
-      }
-      ok = true;
-      reset(pkt);
-      run.got[i] = P[i];
-      run.arr.push(i);
-      flag('delivered');
-      $('#rp').textContent = `${run.arr.length} of ${P.length} received`;
-      $('#rq').insertAdjacentHTML(
-        'beforeend',
-        `<span class="chip c${i % 4} live">P${i + 1}</span>`
-      );
-      ack.textContent = 'ACK ' + (i + 1);
-      ack.style.opacity = 1;
-      ack.style.left = '100%';
-      $('#st').textContent = `Packet ${i + 1} arrived intact. ACK on its way back.`;
-      await fly(ack, '0%', 700 / spd);
-      if (!alive()) return stopped();
-      reset(ack);
-      ack.style.left = '100%';
-      q.classList.remove('live');
-      q.classList.add('ok');
-      logLine('ACK', 'ok', `Packet ${i + 1} acknowledged.`);
-      await sleep(250 / spd);
+  let progress = $('#imageTransferProgress');
+  if (imageMode && !progress) {
+    progress = document.createElement('div');
+    progress.id = 'imageTransferProgress';
+    progress.className = 'image-transfer-progress';
+    progress.innerHTML = '<div class="image-transfer-progress-track"><span></span></div><p aria-live="polite"></p>';
+    $('#st').after(progress);
+  }
+  const updateProgress = () => {
+    if (!imageMode || !progress) return;
+    const pct = Math.round((run.sent / P.length) * 100);
+    const deliveredPct = Math.round((run.arr.length / P.length) * 100);
+    progress.querySelector('span').style.width = pct + '%';
+    progress.querySelector('p').textContent =
+      run.sent.toLocaleString() + ' / ' + P.length.toLocaleString() +
+      ' packets processed · ' + run.arr.length.toLocaleString() + ' delivered · '
+      run.retries.toLocaleString() + ' retries · ' + pct + '%';
+  };
+  logLine('START', '', `Sending ${P.length.toLocaleString()} packet${P.length === 1 ? '' : 's'}` +
+    (imageMode ? ` in visible patches of ${batchSize} packets` : '') +
+    ` at ${run.cfg.loss}% loss and ${run.cfg.corrupt}% corruption.`);
+  for (let offset = 0; offset < order.length; offset += batchSize) {
+    const batch = order.slice(offset, offset + batchSize);
+    reset(pkt);
+    pkt.textContent = imageMode ? 'Patch ' + (Math.floor(offset / batchSize) + 1) + ' · ' + batch.length + ' packets' : 'P' + (batch[0] + 1);
+    pkt.className = 'fly';
+    pkt.style.opacity = 1;
+    pkt.style.background = '';
+    $('#st').textContent = imageMode
+      ? `Transmitting patch ${Math.floor(offset / batchSize) + 1} of ${Math.ceil(P.length / batchSize)} (${batch.length} packets)...`
+      : `Sending packet ${batch[0] + 1}...`;
+    if (imageMode) {
+      await fly(pkt, '100%', imagePatchDuration);
       if (!alive()) return stopped();
     }
-    if (!ok) {
-      $('#q' + i).classList.add('bad');
-      logLine(
-        'FAIL',
-        'bad',
-        `Packet ${i + 1} gave up after ${maxRetry + 1} attempt${maxRetry ? 's' : ''}.`
-      );
+
+    let batchReceived = 0, batchLost = 0, batchCorrupt = 0;
+    if (imageMode) {
+      // Image batches are transmitted in visible rounds. The first round sends
+      // every packet; each later round visibly retransmits only packets that
+      // were lost or failed their integrity check in the previous round.
+      let pending = batch.slice();
+      for (let attempt = 0; attempt <= maxRetry && pending.length; attempt++) {
+        if (attempt > 0) {
+          reset(pkt);
+          pkt.textContent = 'Retry patch ' + (Math.floor(offset / batchSize) + 1) +
+            ' · attempt ' + attempt + ' · ' + pending.length + ' packets';
+          pkt.className = 'fly retry';
+          pkt.style.opacity = 1;
+          $('#st').textContent = `Retransmitting patch ${Math.floor(offset / batchSize) + 1}: ${pending.length} packet(s), retry ${attempt} of ${maxRetry}...`;
+          run.retries += pending.length;
+          setTop(undefined, undefined, run.retries);
+          flag('retry');
+          await fly(pkt, '100%', imagePatchDuration);
+          if (!alive()) return stopped();
+        }
+
+        const stillPending = [];
+        let roundReceived = 0, roundLost = 0, roundCorrupt = 0;
+        for (const i of pending) {
+          const isLost = !S.up || Math.random() < loss;
+          const isBad = !isLost && Math.random() < corrupt;
+          if (isLost) {
+            roundLost++;
+            batchLost++;
+            stillPending.push(i);
+            continue;
+          }
+          if (isBad) {
+            roundCorrupt++;
+            batchCorrupt++;
+            stillPending.push(i);
+            continue;
+          }
+
+          run.got[i] = P[i];
+          run.arr.push(i);
+          batchReceived++;
+          roundReceived++;
+          const q = $('#q' + i);
+          if (q) { q.classList.remove('bad', 'live'); q.classList.add('ok'); }
+          if (run.arr.length <= 24) {
+            const receivedChip = document.createElement('span');
+            receivedChip.className = `chip c${i % 4} ok live`;
+            receivedChip.textContent = 'P' + (i + 1);
+            $('#rq').append(receivedChip);
+          } else if (run.arr.length === 25) {
+            const receivedHint = document.createElement('span');
+            receivedHint.className = 'hint';
+            receivedHint.textContent = 'Showing first 24 received packets; full count is in the progress summary.';
+            $('#rq').prepend(receivedHint);
+          }
+          flag('delivered');
+        }
+
+        if (attempt > 0) {
+          logLine('RETRY', 're',
+            `Patch ${Math.floor(offset / batchSize) + 1}, retry ${attempt}: ${pending.length} packet(s) retransmitted; ${roundReceived} delivered.`);
+        }
+        if (roundLost) logLine('LOSS', 'bad', `${roundLost} packet attempt(s) were lost in patch ${Math.floor(offset / batchSize) + 1}.`);
+        if (roundCorrupt) logLine('CRC', 'bad', `${roundCorrupt} packet attempt(s) failed CRC in patch ${Math.floor(offset / batchSize) + 1}; retransmission queued.`);
+
+        pending = stillPending;
+        if (pending.length && attempt < maxRetry) {
+          pkt.textContent = 'Waiting for retry · ' + pending.length + ' packets';
+          await sleep(300);
+          if (!alive()) return stopped();
+        }
+      }
+
+      if (pending.length) {
+        run.failed += pending.length;
+        pending.forEach(i => {
+          const q = $('#q' + i);
+          if (q) { q.classList.remove('live'); q.classList.add('bad'); }
+        });
+        logLine('FAIL', 'bad',
+          `Patch ${Math.floor(offset / batchSize) + 1}: ${pending.length} packet(s) still missing after ${maxRetry} retries.`);
+      }
+      run.sent += batch.length;
+    } else {
+      for (const i of batch) {
+        let ok = false;
+        for (let attempt = 0; attempt <= maxRetry && !ok; attempt++) {
+          const isLost = !S.up || Math.random() < loss;
+          const isBad = !isLost && Math.random() < corrupt;
+          const q = $('#q' + i);
+          if (attempt > 0) {
+            run.retries++;
+            setTop(undefined, undefined, run.retries);
+            batchRetries++;
+            flag('retry');
+          }
+          if (q) q.classList.add('live');
+          reset(pkt);
+          pkt.textContent = 'P' + (i + 1);
+          pkt.className = 'fly';
+          pkt.style.opacity = 1;
+          $('#st').textContent = attempt
+            ? `Retransmitting packet ${i + 1} (retry ${attempt} of ${maxRetry})...`
+            : `Sending packet ${i + 1}...`;
+          logLine(attempt ? 'RETRY' : 'SEND', attempt ? 're' : '', `Packet ${i + 1} ${attempt ? 'sent again' : 'sent'}.`);
+          await fly(pkt, isLost ? '50%' : '100%', 900 / speed);
+          if (!alive()) return stopped();
+          if (isLost) {
+            batchLost++;
+            pkt.className = 'fly lost';
+            logLine('LOST', 'bad', `Packet ${i + 1} vanished on the link. No ACK.`);
+            await sleep(450 / speed);
+            if (!alive()) return stopped();
+            reset(pkt);
+            if (q) { q.classList.remove('live'); q.classList.add('bad'); }
+            await sleep(550 / speed);
+            if (!alive()) return stopped();
+            if (q) q.classList.remove('bad');
+            continue;
+          }
+          if (isBad) {
+            batchCorrupt++;
+            const expected = packetCrc(i, P[i], imageMode);
+            const seen = expected ^ (1 << Math.floor(Math.random() * 8));
+            pkt.className = 'fly corrupt';
+            logLine('CRC', 'bad', `Packet ${i + 1} failed CRC: expected ${hex(expected)}, received ${hex(seen)}. Discarded.`);
+            await sleep(700 / speed);
+            if (!alive()) return stopped();
+            reset(pkt);
+            if (q) { q.classList.remove('live'); q.classList.add('bad'); }
+            await sleep(450 / speed);
+            if (!alive()) return stopped();
+            if (q) q.classList.remove('bad');
+            continue;
+          }
+          ok = true;
+          run.got[i] = P[i];
+          run.arr.push(i);
+          batchReceived++;
+          const receivedChip = document.createElement('span');
+          receivedChip.className = `chip c${i % 4} ok live`;
+          receivedChip.textContent = 'P' + (i + 1);
+          $('#rq').append(receivedChip);
+          flag('delivered');
+          if (q) q.classList.add('ok');
+          reset(pkt);
+          ack.textContent = 'ACK ' + (i + 1);
+          ack.style.opacity = 1;
+          ack.style.left = '100%';
+          $('#st').textContent = `Packet ${i + 1} arrived intact. ACK on its way back.`;
+          await fly(ack, '0%', 700 / speed);
+          if (!alive()) return stopped();
+          reset(ack);
+          ack.style.left = '100%';
+          if (q) { q.classList.remove('live'); q.classList.add('ok'); }
+          logLine('ACK', 'ok', `Packet ${i + 1} acknowledged.`);
+          await sleep(250 / speed);
+          if (!alive()) return stopped();
+        }
+        if (!ok) {
+          run.failed++;
+          const q = $('#q' + i);
+          if (q) q.classList.add('bad');
+          logLine('FAIL', 'bad', `Packet ${i + 1} gave up after ${maxRetry + 1} attempt(s).`);
+        }
+        run.sent++;
+      }
     }
+    if (imageMode) {
+      logLine('BATCH', batchReceived === batch.length ? 'ok' : 'warn',
+        `Patch ${Math.floor(offset / batchSize) + 1}: ${batchReceived}/${batch.length} packets received in this patch; ${run.arr.length}/${P.length} delivered overall.`);
+    }
+    updateProgress();
+    $('#rp').textContent = `${run.arr.length.toLocaleString()} of ${P.length.toLocaleString()} received`;
+    if (imageMode) {
+      $('#st').textContent = `Processed ${run.sent.toLocaleString()} of ${P.length.toLocaleString()} packets; ${run.arr.length.toLocaleString()} delivered overall. ${batchReceived} arrived in the latest patch.`;
+      await sleep(Math.max(80, 140 / speed));
+      if (!alive()) return stopped();
+    }
+    reset(pkt);
   }
   const miss = run.got.filter(x => !x).length;
   $('#sp').textContent = miss ? 'Gave up' : 'All sent';
-  $('#rp').textContent = miss ? `${miss} missing` : 'Everything arrived';
+  $('#rp').textContent = miss ? `${miss.toLocaleString()} missing` : 'Everything arrived';
   $('#st').textContent = miss
-    ? 'Transmission incomplete. Open the receiver to see the gap.'
-    : 'Transmission complete. Open the receiver to see the result.';
+    ? `Transmission incomplete: ${miss.toLocaleString()} packet(s) remain missing. Open the receiver to inspect the gaps.`
+    : `Transmission complete. All ${P.length.toLocaleString()} packets arrived and passed their checks.`;
+  if (imageMode) updateProgress();
   S.busy = false;
   syncGo();
   flag('transmitted');
@@ -280,17 +416,14 @@ export async function transmit() {
     corrupt: run.cfg.corrupt,
     packets: P.length,
     retries: run.retries,
-    ok: !miss,
+    ok: !miss
   });
 }
-
 /**
  * Resets queues and log for a new run without redrawing an old one.
  */
 function labPrepareQuiet() {
-  $('#sq').innerHTML = S.P.map(
-    (_, i) => `<span class="chip c${i % 4}" id="q${i}">P${i + 1}</span>`
-  ).join('');
+  $('#sq').innerHTML = senderQueueMarkup();
   $('#rq').innerHTML = '';
   $('#log').innerHTML = '';
   setTop(undefined, S.P.length, 0);

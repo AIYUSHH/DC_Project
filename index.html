@@ -238,8 +238,7 @@
               <div class="eyebrow">Core lab · Step 2 of 4</div>
               <h2>Cut the stream into packets</h2>
               <p>
-                Drag the slider to change how many bytes fit in one packet.
-                Hover or focus a packet to see which bytes it carries.
+                Choose the payload size for each packet. Image mode uses a larger payload and displays a bounded packet sample to keep large transfers responsive.
               </p>
             </div>
             <div class="panel">
@@ -274,8 +273,7 @@
               <div class="eyebrow">Core lab · Step 3 of 4</div>
               <h2>Send it across a shaky link</h2>
               <p>
-                The sender waits for an ACK after every packet. A lost or
-                corrupted packet is sent again until the retry limit is reached.
+                Lost or corrupted packets fail their CRC check and are retried up to the selected limit. Text uses packet-by-packet animation; images are checked individually and travel in visible 16-packet patches, with a slower animation so each patch can be followed across the link.
                 You can take the link down while a run is in progress.
               </p>
             </div>

@@ -29,20 +29,24 @@ export function labRecv() {
   $('#rBody').hidden = !r;
   clearInterval(S.timer);
   if (!r) return;
+  const imageMode = S.dataType === 'image';
+  const previewLimit = imageMode ? 32 : r.arr.length;
+  const shownArr = r.arr.slice(0, previewLimit);
   $('#arr').innerHTML =
-    r.arr
-      .map(
-        (x, i) =>
-          `<li><span class="tag ok">${i + 1}</span>Packet ${x + 1} arrived and passed its CRC-8 check</li>`
-      )
-      .join('') || '<li>Nothing arrived.</li>';
-  $('#slots').innerHTML = r.got
-    .map((p, i) =>
-      p
-        ? `<div class="slot ok"><b>Slot ${i + 1}</b><span>${hexs(p)}</span></div>`
-        : `<div class="slot miss"><b>Slot ${i + 1}</b><span>missing</span></div>`
-    )
-    .join('');
+    (imageMode && r.arr.length > previewLimit ? `<li class="hint">Showing first ${previewLimit} of ${r.arr.length.toLocaleString()} received packets.</li>` : '') +
+    shownArr.map(x => `<li><span class="tag ok">${x + 1}</span>Packet ${x + 1} arrived and passed its CRC-8 check</li>`).join('') ||
+    '<li>Nothing arrived.</li>';
+  if (imageMode && r.got.length > previewLimit) {
+    const missing = r.got.reduce((count, packet) => count + (packet ? 0 : 1), 0);
+    $('#slots').innerHTML = `<div class="image-byte-summary"><strong>${r.arr.length.toLocaleString()} / ${r.got.length.toLocaleString()} packets received</strong><span>${missing.toLocaleString()} missing · Detailed slot rendering is limited for large image transfers to keep the page responsive.</span></div>` +
+      r.got.slice(0, 12).map((p, i) => p
+        ? `<div class="slot ok"><b>Slot ${i + 1}</b><span>${p.length} bytes</span></div>`
+        : `<div class="slot miss"><b>Slot ${i + 1}</b><span>missing</span></div>`).join('');
+  } else {
+    $('#slots').innerHTML = r.got.map((p, i) => p
+      ? `<div class="slot ok"><b>Slot ${i + 1}</b><span>${hexs(p)}</span></div>`
+      : `<div class="slot miss"><b>Slot ${i + 1}</b><span>missing</span></div>`).join('');
+  }
   const miss = r.got.filter(x => !x).length;
   $('#rc').textContent = miss
     ? `${miss} slot${miss > 1 ? 's' : ''} still empty.`
@@ -51,9 +55,11 @@ export function labRecv() {
   res.className = 'result';
   if (miss) {
     let prefix = [];
-    for (const g of r.got) {
-      if (!g) break;
-      prefix.push(...g);
+    if (S.dataType === 'text') {
+      for (const g of r.got) {
+        if (!g) break;
+        prefix.push(...g);
+      }
     }
     const part = S.dataType === 'text' ? dec.decode(new Uint8Array(prefix)) : '';
     res.classList.add('bad');
@@ -64,7 +70,13 @@ export function labRecv() {
   }
   flag('rebuilt');
   if (S.dataType === 'image') {
-    const blob = new Blob([new Uint8Array(r.got.flat())], { type: S.imageMimeType || 'application/octet-stream' });
+    const imageBytes = new Uint8Array(S.bytes.length);
+    let byteOffset = 0;
+    for (const packet of r.got) {
+      imageBytes.set(packet, byteOffset);
+      byteOffset += packet.length;
+    }
+    const blob = new Blob([imageBytes], { type: S.imageMimeType || 'application/octet-stream' });
     if (S.reconstructedImageUrl) URL.revokeObjectURL(S.reconstructedImageUrl);
     const url = URL.createObjectURL(blob);
     S.reconstructedImageUrl = url;

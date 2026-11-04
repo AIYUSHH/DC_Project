@@ -34,7 +34,9 @@ const PRESETS = ['Hello, 世界', 'Café ☕', 'Hi 👋', 'The quick brown fox',
 export function labInit() {
   $('#msg').value = S.msg;
   let textPayloadSize = $('#ps').value;
+  let imageReadToken = 0;
   const setMode = mode => {
+    imageReadToken++;
     const previousMode = S.dataType;
     S.dataType = mode;
     $('#textInput').hidden = mode !== 'text';
@@ -47,10 +49,10 @@ export function labInit() {
     $('#textMode').setAttribute('aria-pressed', String(mode === 'text'));
     $('#imageMode').setAttribute('aria-pressed', String(mode === 'image'));
     $('#resultTitle').textContent = mode === 'image' ? 'Reconstructed image' : 'Reassembled message';
-    if (mode === 'text') { S.imageMimeType = null; S.imageName = null; S.imageSize = 0; $('#ps').value = textPayloadSize; encodeMsg(); labSplit(); }
+    if (mode === 'text') { S.imageMimeType = null; S.imageName = null; S.imageSize = 0; $('#ps').min = '1'; $('#ps').max = '8'; $('#ps').step = '1'; $('#ps').value = textPayloadSize; encodeMsg(); labSplit(); }
     else {
       if (previousMode !== 'image') textPayloadSize = $('#ps').value;
-      $('#ps').value = '8';
+      $('#ps').min = '256'; $('#ps').max = '1200'; $('#ps').step = '16'; $('#ps').value = '1200';
       S.bytes = [];
       $('#bytes').innerHTML = '<p class="hint">Choose an image to inspect its binary data.</p>';
       $('#bsum').textContent = 'No image selected.';
@@ -61,12 +63,14 @@ export function labInit() {
   $('#textMode').onclick = () => setMode('text');
   $('#imageMode').onclick = () => setMode('image');
   $('#imageFile').addEventListener('change', async event => {
+    const readToken = ++imageReadToken;
     const file = event.target.files && event.target.files[0];
     if (!file) return;
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { alert('Choose a PNG, JPG, or WebP image.'); event.target.value = ''; return; }
-    if (file.size > 2 * 1024 * 1024) { alert('For this animated lab, choose an image no larger than 2 MB. Image transfers use the maximum 8-byte payload to keep the packet count manageable.'); event.target.value = ''; return; }
+    if (file.size > 2 * 1024 * 1024) { alert('For this animated lab, choose an image no larger than 2 MB. Image transfers use larger payloads and batched animation.'); event.target.value = ''; return; }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
+      if (readToken !== imageReadToken || S.dataType !== 'image') return;
       if (S.imageUrl) URL.revokeObjectURL(S.imageUrl);
       S.imageUrl = URL.createObjectURL(file);
       S.imageMimeType = file.type; S.imageName = file.name; S.imageSize = file.size;

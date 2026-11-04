@@ -46,22 +46,45 @@ export function labSplit() {
   for (let i = 0; i < S.bytes.length; i += n) S.P.push(S.bytes.slice(i, i + n));
   // Fingerprint of what is about to be sent. If it differs from last time, any earlier
   // transmission result no longer matches the data and is discarded.
-  const sig = n + ':' + S.bytes.join(',');
+  // Hash the byte stream instead of joining millions of characters into a huge signature string.
+  let hash = 2166136261;
+  for (let i = 0; i < S.bytes.length; i++) {
+    hash ^= S.bytes[i];
+    hash = Math.imul(hash, 16777619);
+  }
+  const sig = n + ':' + S.bytes.length + ':' + (hash >>> 0);
   if (sig !== labSig) {
     S.run = null;
     labSig = sig;
   }
-  $('#pstream').innerHTML = S.P.length
-    ? S.P.map((p, i) =>
-        p.map(x => `<span class="chip c${i % 4}" data-p="${i}">${hex(x)}</span>`).join('')
-      ).join('')
-    : '<p class="hint">No data yet. Enter text or choose an image first.</p>';
-  const visiblePackets = S.P.length > 120 ? S.P.slice(0, 120) : S.P;
-  $('#pk').innerHTML = (S.P.length > 120 ? '<p class="hint">Showing the first 120 of ' + S.P.length.toLocaleString() + ' packets. All packets remain in the simulation.</p>' : '') + visiblePackets.map(
-    (p, i) =>
-      `<div class="pk c${i % 4}" tabindex="0" data-p="${i}"><div class="t"><span>Packet ${i + 1}</span><span>${p.length} B</span></div><div class="s"><b>Header</b>seq ${i + 1}, length ${p.length}</div><div class="s"><b>Payload</b><span>${hexs(p)}</span></div><div class="s"><b>CRC-8 trailer</b><span>${hex(packetCrc(i, p))}</span></div></div>`
-  ).join('');
-  const over = S.P.length * (HDR + TRL),
+  if (S.dataType === 'image') {
+    $('#pstream').innerHTML = '<p class="hint">Image bytes are kept as a binary buffer. Packet cards below show a sample; the full packet set is processed during transmission.</p>';
+  } else {
+    $('#pstream').innerHTML = S.P.length
+      ? S.P.map((p, i) => p.map(x => `<span class="chip c${i % 4}" data-p="${i}">${hex(x)}</span>`).join('')).join('')
+      : '<p class="hint">No data yet. Enter text or choose an image first.</p>';
+  }
+  const packetPreviewCount = S.dataType === 'image' ? 16 : 120;
+  const visiblePackets = S.P.slice(0, packetPreviewCount);
+  const packetCards = visiblePackets.map((p, i) => {
+    const crc = hex(packetCrc(i, p, S.dataType === 'image'));
+    if (S.dataType === 'image') {
+      const sampleSize = 6;
+      const sample = hexs(p.slice(0, sampleSize));
+      const remaining = Math.max(0, p.length - sampleSize);
+      return `<div class="pk c${i % 4}" tabindex="0" data-p="${i}">
+        <div class="t"><span>Packet ${i + 1}</span><span>${p.length.toLocaleString()} B</span></div>
+        <div class="s"><b>Header</b><span>seq ${i + 1} · ${p.length} B</span></div>
+        <div class="s payload-sample"><b>Payload</b><code>${sample}${remaining ? ' …' : ''}</code></div>
+        ${remaining ? `<div class="s packet-omitted">+ ${remaining.toLocaleString()} more bytes</div>` : ''}
+        <div class="s"><b>CRC-8</b><span>${crc}</span></div>
+      </div>`;
+    }
+    return `<div class="pk c${i % 4}" tabindex="0" data-p="${i}"><div class="t"><span>Packet ${i + 1}</span><span>${p.length} B</span></div><div class="s"><b>Header</b>seq ${i + 1}, length ${p.length}</div><div class="s"><b>Payload</b><span>${hexs(p)}</span></div><div class="s"><b>CRC-8 trailer</b><span>${crc}</span></div></div>`;
+  }).join('');
+  $('#pk').classList.toggle('image-packets', S.dataType === 'image');
+  $('#pk').innerHTML = (S.P.length > packetPreviewCount ? '<p class="hint">Showing ' + packetPreviewCount + ' compact sample packets of ' + S.P.length.toLocaleString() + '. Image payload cards show the first 6 bytes only; all bytes are still transmitted.</p>' : '') + packetCards;
+  const over = S.P.length * ((S.dataType === 'image' ? 4 : HDR) + TRL),
     tot = S.bytes.length + over;
   $('#pstats').innerHTML = [
     [S.P.length, 'packets'],

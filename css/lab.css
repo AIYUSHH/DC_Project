@@ -142,26 +142,55 @@
 }
 .fly {
   position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   top: 50%;
   left: 0;
   transform: translate(-50%, -50%);
-  padding: 0.2rem 0.6rem;
+  min-height: 28px;
+  padding: 0.28rem 0.68rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 8px;
-  background: var(--c0);
-  color: var(--accent-ink);
+  background: #376fe8;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
   font: 700 0.8rem var(--mono);
+  line-height: 1.25;
   opacity: 0;
   white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28);
+  isolation: isolate;
+  will-change: left, opacity;
+}
+#pkt {
+  z-index: 4;
+  background: #376fe8;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 #ack {
   top: 80%;
-  background: var(--c2);
+  background: #087c57;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+.fly.retry {
+  background: #ffc24b;
+  color: #172033;
+  -webkit-text-fill-color: #172033;
+  border-color: #e4a82f;
 }
 .fly.lost {
-  background: var(--bad);
+  background: #c93449;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 .fly.corrupt {
-  background: var(--warn);
+  background: #e0a126;
+  color: #172033;
+  -webkit-text-fill-color: #172033;
 }
 .status {
   margin-top: 0.9rem;
@@ -267,3 +296,46 @@
 .reconstructed-image{display:block;max-width:100%;max-height:420px;object-fit:contain;border-radius:10px}
 
 .image-input[hidden],.presets[hidden],#textInput[hidden]{display:none!important}
+
+/* Batched image transfer progress (kept inside the existing transmission stage). */
+.image-transfer-progress{margin-top:.8rem;padding:.75rem .9rem;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+.image-transfer-progress-track{height:9px;overflow:hidden;border-radius:999px;background:var(--surface2);border:1px solid var(--line)}
+.image-transfer-progress-track span{display:block;width:0;height:100%;background:var(--ok);transition:width .16s ease}
+.image-transfer-progress p{margin:.5rem 0 0;color:var(--muted);font-size:.82rem;font-variant-numeric:tabular-nums}
+
+/* Compact packet cards for large binary image payloads. Text cards retain their detailed layout. */
+.packets.image-packets {
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 0.55rem;
+}
+.image-packets .pk {
+  min-width: 0;
+  padding: 0.48rem 0.58rem;
+  border-radius: 9px;
+  font-size: 0.74rem;
+}
+.image-packets .pk .t {
+  margin-bottom: 0.28rem;
+  font-size: 0.76rem;
+  gap: 0.35rem;
+}
+.image-packets .pk .s {
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 0.69rem;
+  line-height: 1.3;
+}
+.image-packets .pk .s b {
+  min-width: 3.1rem;
+  font-size: 0.61rem;
+}
+.image-packets .payload-sample code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: 0.68rem var(--mono);
+}
+.image-packets .packet-omitted {
+  padding-left: 3.35rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
