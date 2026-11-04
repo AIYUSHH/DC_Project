@@ -1,29 +1,154 @@
 /**
- * Global learning-module search.
- * Searches the modules already registered by the application and opens a result
- * through the existing hash router; no backend or additional service is needed.
+ * Intelligent learning-module search.
+ *
+ * Uses local typo-tolerant matching and edit distance. No third-party script,
+ * backend, or AI service is required. Results navigate through the existing hash
+ * router and module registry; no backend or AI service is required.
  */
 import { DC } from '../core/state.js';
 import { GROUPS } from '../modules/registry.js';
 
 const SEARCH_TERMS = {
-  handshake: ['tcp handshake', 'three-way handshake', 'syn', 'syn-ack', 'ack', 'connection establishment'],
-  subnets: ['subnet mask', 'subnetting', 'ipv4', 'cidr', 'network address', 'broadcast address', 'usable hosts', 'vlsm'],
-  dns: ['dns cache', 'dns resolution', 'domain lookup', 'ttl', 'cached records'],
-  http: ['http put', 'put method', 'http methods', 'request body', 'headers', 'update resource', 'https', 'tls'],
-  capture: ['packet capture', 'packets', 'capture analyzer', 'protocol inspection', 'wireshark'],
-  tcpudp: ['tcp', 'udp', 'ports', 'transport protocol'],
+  handshake: ['tcp handshake', 'three-way handshake', 'syn', 'syn-ack', 'ack', 'connection establishment', 'connection setup', 'three way connection', 'tcp connection'],
+  subnets: ['subnet mask', 'subnetting', 'ipv4', 'cidr', 'network address', 'broadcast address', 'usable hosts', 'vlsm', 'subnet calculation', 'ip addressing'],
+  dns: ['dns cache', 'dns resolution', 'domain lookup', 'domain name system', 'ttl', 'cached records', 'name resolution', 'domain names'],
+  http: ['http put', 'put method', 'http methods', 'request body', 'headers', 'update resource', 'https', 'tls', 'hypertext transfer protocol'],
+  capture: ['packet capture', 'packets', 'capture analyzer', 'protocol inspection', 'wireshark', 'network traffic analysis', 'sniffing'],
+  tcpudp: ['tcp', 'udp', 'ports', 'transport protocol', 'transmission control protocol', 'user datagram protocol', 'multiplexing'],
   glossary: ['port number reference', 'port lookup', 'well-known ports', 'registered ports', 'service port', 'tcp port', 'udp port', 'common ports'],
-  protocolcompare: ['protocol comparison', 'tcp vs udp', 'ipv4 vs ipv6', 'http vs https', 'dns over tcp', 'static routing', 'dynamic routing', 'hub switch router', 'stop-and-wait', 'sliding window arq'],
+  protocolcompare: ['protocol comparison', 'tcp vs udp', 'ipv4 vs ipv6', 'http vs https', 'dns over tcp', 'static routing', 'dynamic routing', 'hub switch router', 'stop-and-wait', 'sliding window arq', 'osi vs tcp ip'],
 };
 
-const normalize = value => String(value || '').toLocaleLowerCase().trim();
+// Natural-language concepts that should lead to a specific learning topic.
+const CONCEPT_ALIASES = [
+  { terms: ['three way connection', 'three-way connection', 'connection setup', 'connection establishment'], query: 'tcp handshake' },
+  { terms: ['reliable delivery', 'reliable data transfer', 'ordered delivery'], query: 'tcp' },
+  { terms: ['domain names', 'domain lookup', 'name resolution'], query: 'dns' },
+  { terms: ['change a resource', 'update a resource', 'replace resource'], query: 'http put' },
+  { terms: ['divide network', 'split network', 'ip range calculation'], query: 'subnetting' },
+  { terms: ['inspect network traffic', 'sniff network traffic'], query: 'packet capture' },
+];
+
+const normalize = value => String(value || '')
+  .normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+const tokenize = value => normalize(value).split(/\s+/).filter(Boolean);
+
+function editDistance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+function tokenSimilarity(query, document) {
+  const queryTokens = tokenize(query);
+  const documentTokens = tokenize(document);
+  if (!queryTokens.length || !documentTokens.length) return 0;
+
+  const scores = queryTokens.map(token => {
+    let best = 0;
+    for (const candidate of documentTokens) {
+      if (candidate === token) best = Math.max(best, 1);
+      else if (candidate.startsWith(token) || token.startsWith(candidate)) {
+        const ratio = Math.min(token.length, candidate.length) / Math.max(token.length, candidate.length);
+        best = Math.max(best, ratio >= 0.55 ? 0.88 : 0);
+      } else if (Math.min(token.length, candidate.length) >= 3) {
+        const distance = editDistance(token, candidate);
+        const allowed = token.length >= 8 ? 2 : 1;
+        if (distance <= allowed) best = Math.max(best, 1 - distance / Math.max(token.length, candidate.length));
+      }
+    }
+    return best;
+  });
+  return scores.reduce((sum, score) => sum + score, 0) / queryTokens.length;
+}
+
+function expandedQueries(query) {
+  const normalized = normalize(query);
+  const expansions = [query];
+  for (const alias of CONCEPT_ALIASES) {
+    if (alias.terms.some(term => normalized.includes(normalize(term)))) {
+      expansions.push(alias.query);
+    }
+  }
+  return [...new Set(expansions)];
+}
+
+function buildSearchDocuments() {
+  return DC.mods.map(mod => {
+    const group = GROUPS.find(item => item.id === mod.group);
+    const keywords = SEARCH_TERMS[mod.id] || [];
+    return {
+      mod,
+      group,
+      title: mod.title || '',
+      description: mod.desc || '',
+      keywords: keywords.join(' '),
+      groupName: group?.name || '',
+      groupDescription: group?.blurb || '',
+      searchable: [mod.title, mod.desc, group?.name, group?.blurb, ...keywords].filter(Boolean).join(' '),
+    };
+  });
+}
+
+function rankDocuments(query, documents) {
+  const candidates = new Map();
+  const queries = expandedQueries(query);
+
+  queries.forEach((candidateQuery, queryIndex) => {
+    const needle = normalize(candidateQuery);
+    if (!needle) return;
+
+
+    documents.forEach(item => {
+      const title = normalize(item.title);
+      const keywords = normalize(item.keywords);
+      const searchable = normalize(item.searchable);
+      const exactBoost = title === needle ? 1 : title.startsWith(needle) ? 0.88 :
+        title.includes(needle) ? 0.78 : keywords.includes(needle) ? 0.68 :
+        searchable.includes(needle) ? 0.55 : 0;
+      const fuzzy = Math.max(
+        tokenSimilarity(candidateQuery, item.title) * 0.9,
+        tokenSimilarity(candidateQuery, item.keywords) * 0.76,
+        tokenSimilarity(candidateQuery, item.searchable) * 0.62,
+      );
+      const relevance = Math.max(exactBoost, fuzzy) - (queryIndex === 0 ? 0 : 0.08);
+      if (relevance >= 0.48) {
+        candidates.set(item.mod.id, Math.max(candidates.get(item.mod.id) || 0, relevance));
+      }
+    });
+  });
+
+  return documents
+    .filter(item => candidates.has(item.mod.id))
+    .map(item => ({ ...item, score: candidates.get(item.mod.id) }))
+    .sort((a, b) => b.score - a.score || a.mod.title.localeCompare(b.mod.title))
+    .slice(0, 8);
+}
 
 export function initModuleSearch() {
   const input = document.querySelector('#moduleSearch');
   const panel = document.querySelector('#moduleSearchResults');
   if (!input || !panel) return;
 
+  const documents = buildSearchDocuments();
   let activeIndex = -1;
   let currentResults = [];
 
@@ -39,32 +164,19 @@ export function initModuleSearch() {
   const render = query => {
     panel.replaceChildren();
     activeIndex = -1;
-    const needle = normalize(query);
-    if (!needle) {
+    if (!normalize(query)) {
       panel.hidden = true;
       input.setAttribute('aria-expanded', 'false');
       currentResults = [];
       return;
     }
 
-    currentResults = DC.mods
-      .map(mod => {
-        const group = GROUPS.find(item => item.id === mod.group);
-        const keywords = SEARCH_TERMS[mod.id] || [];
-        const fields = [mod.title, mod.desc, group?.name, group?.blurb, ...keywords];
-        const haystack = normalize(fields.join(' '));
-        const title = normalize(mod.title);
-        const score = title === needle ? 100 : title.startsWith(needle) ? 50 : title.includes(needle) ? 30 : haystack.includes(needle) ? 10 : 0;
-        return { mod, group, score };
-      })
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score || a.mod.title.localeCompare(b.mod.title))
-      .slice(0, 8);
+    currentResults = rankDocuments(query, documents);
 
     if (!currentResults.length) {
       const empty = document.createElement('p');
       empty.className = 'module-search-empty';
-      empty.textContent = 'No matching learning modules. Try “TCP”, “subnet mask”, or “DNS”.';
+      empty.textContent = 'No matching learning modules. Try a topic such as “TCP”, “subnet mask”, or “DNS”.';
       panel.append(empty);
     } else {
       currentResults.forEach(({ mod, group }, index) => {
