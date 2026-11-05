@@ -158,6 +158,9 @@ regMod({
             };
             $('#ck', p).onchange = e => {
               kind = e.target.value;
+              // Apply the selected event to the default loss round immediately.
+              loss = { ...loss, 8: kind };
+              draw();
             };
             ['cs', 'cw'].forEach(id => {
               $('#' + id, p).onchange = draw;
