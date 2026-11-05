@@ -29,6 +29,52 @@ import { syncGo, transmit } from './transmission-stage.js';
 const PRESETS = ['Hello, 世界', 'Café ☕', 'Hi 👋', 'The quick brown fox', 'é€𝄞'];
 
 /**
+ * Validate one selected file before reading it into the simulator.
+ * Empty MIME types are accepted because some browsers/OS combinations do not report them;
+ * the extension is still checked against the mode's explicit allow-list.
+ */
+function validateUploadFile(file, { extensions, mimeTypes, maxBytes, label }) {
+  const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+  if (!extensions.includes(extension)) {
+    return `Unsupported ${label} format. Allowed formats: ${extensions.map(ext => ext.toUpperCase()).join(', ')}.`;
+  }
+  if (file.type && !mimeTypes.includes(file.type.toLowerCase())) {
+    return `The selected file's type (${file.type}) does not match the supported ${label} formats. Please choose a valid ${label} file.`;
+  }
+  if (file.size > maxBytes) {
+    return `File is too large (${(file.size / (1024 * 1024)).toFixed(2)} MB). The maximum allowed size is ${(maxBytes / (1024 * 1024)).toFixed(0)} MB.`;
+  }
+  if (file.size === 0) return 'This file is empty. Please choose a file that contains data.';
+  return '';
+}
+
+/** Show an accessible inline warning without disturbing the last valid preview/data. */
+function showUploadError(input, message) {
+  let warning = input.parentElement.querySelector('.upload-error');
+  if (!warning) {
+    warning = document.createElement('p');
+    warning.className = 'upload-error';
+    warning.setAttribute('role', 'alert');
+    warning.setAttribute('aria-live', 'assertive');
+    input.insertAdjacentElement('afterend', warning);
+  }
+  warning.textContent = message;
+  warning.hidden = !message;
+  input.setAttribute('aria-invalid', String(Boolean(message)));
+  if (message) input.value = '';
+}
+
+function clearUploadError(input) {
+  const warning = input.parentElement.querySelector('.upload-error');
+  if (warning) {
+    warning.textContent = '';
+    warning.hidden = true;
+  }
+  input.setAttribute('aria-invalid', 'false');
+}
+
+
+/**
  * Start-up wiring of the core-lab controls (see file header).
  */
 export function labInit() {
@@ -84,8 +130,9 @@ export function labInit() {
     const readToken = ++imageReadToken;
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { alert('Choose a PNG, JPG, or WebP image.'); event.target.value = ''; return; }
-    if (file.size > 2 * 1024 * 1024) { alert('For this animated lab, choose an image no larger than 2 MB. Image transfers use larger payloads and batched animation.'); event.target.value = ''; return; }
+    clearUploadError(event.target);
+    const validationMessage = validateUploadFile(file, { extensions: ["png","jpg","jpeg","webp"], mimeTypes: ["image/png","image/jpeg","image/webp"], maxBytes: 2097152, label: 'image' });
+    if (validationMessage) { showUploadError(event.target, validationMessage); return; }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (readToken !== imageReadToken || S.dataType !== 'image') return;
@@ -98,14 +145,15 @@ export function labInit() {
       const meta = document.createElement('p'); meta.textContent = file.name + ' · ' + (file.size / 1024).toFixed(2) + ' KB';
       $('#imagePreview').append(img, meta);
       encodeMsg(); labSplit();
-    } catch (error) { console.error('Image read failed', error); alert('The selected image could not be read.'); }
+    } catch (error) { console.error('Image read failed', error); showUploadError(event.target, 'The selected image could not be read. Please try another PNG, JPG, or WebP file.'); }
   });
   $('#videoFile').addEventListener('change', async event => {
     const readToken = ++videoReadToken;
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) { alert('Choose an MP4, WebM, or MOV video.'); event.target.value = ''; return; }
-    if (file.size > 10 * 1024 * 1024) { alert('For this animated lab, choose a video no larger than 10 MB.'); event.target.value = ''; return; }
+    clearUploadError(event.target);
+    const validationMessage = validateUploadFile(file, { extensions: ["mp4","webm","mov"], mimeTypes: ["video/mp4","video/webm","video/quicktime"], maxBytes: 10485760, label: 'video' });
+    if (validationMessage) { showUploadError(event.target, validationMessage); return; }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (readToken !== videoReadToken || S.dataType !== 'video') return;
@@ -116,6 +164,9 @@ export function labInit() {
       const preview = $('#videoPreview'); preview.replaceChildren();
       const player = document.createElement('video');
       player.src = S.videoUrl; player.controls = true; player.preload = 'metadata'; player.className = 'selected-video-preview';
+      player.addEventListener('error', () => {
+        if (readToken === videoReadToken) showUploadError(event.target, 'The video preview could not load. The file may be damaged or use an unsupported codec.');
+      }, { once: true });
       player.addEventListener('loadedmetadata', () => {
         if (readToken !== videoReadToken) return;
         S.videoDuration = Number.isFinite(player.duration) ? player.duration : 0;
@@ -127,12 +178,15 @@ export function labInit() {
       const meta = document.createElement('p'); meta.textContent = file.name + ' · ' + (file.size / (1024 * 1024)).toFixed(2) + ' MB · Reading metadata…';
       preview.append(player, meta);
       encodeMsg(); labSplit();
-    } catch (error) { console.error('Video read failed', error); alert('The selected video could not be read.'); }
+    } catch (error) { console.error('Video read failed', error); showUploadError(event.target, 'The selected video could not be read. Please check the file or try another MP4, WebM, or MOV video.'); }
   });
   $('#documentFile').addEventListener('change', async event => {
     const readToken = ++documentReadToken;
     const file = event.target.files && event.target.files[0];
     if (!file) return;
+    clearUploadError(event.target);
+    const validationMessage = validateUploadFile(file, { extensions: ["pdf","docx","doc","txt","rtf"], mimeTypes: ["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/msword","text/plain","application/rtf","text/rtf"], maxBytes: 5242880, label: 'document' });
+    if (validationMessage) { showUploadError(event.target, validationMessage); return; }
     const extension = file.name.split('.').pop().toLowerCase();
     const documentTypes = {
       pdf: 'application/pdf',
@@ -141,16 +195,6 @@ export function labInit() {
       txt: 'text/plain',
       rtf: 'application/rtf'
     };
-    if (!Object.prototype.hasOwnProperty.call(documentTypes, extension)) {
-      alert('Choose a PDF, DOCX, DOC, TXT, or RTF document.');
-      event.target.value = '';
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('For this animated lab, choose a document no larger than 5 MB.');
-      event.target.value = '';
-      return;
-    }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (readToken !== documentReadToken || S.dataType !== 'document') return;
@@ -188,13 +232,16 @@ export function labInit() {
       labSplit();
     } catch (error) {
       console.error('Document read failed', error);
-      alert('The selected document could not be read.');
+      showUploadError(event.target, 'The selected document could not be read. Please check that the file is not damaged.');
     }
   });
   $('#audioFile').addEventListener('change', async event => {
     const readToken = ++audioReadToken;
     const file = event.target.files && event.target.files[0];
     if (!file) return;
+    clearUploadError(event.target);
+    const validationMessage = validateUploadFile(file, { extensions: ["mp3","wav","ogg","oga","m4a","aac","flac"], mimeTypes: ["audio/mpeg","audio/wav","audio/x-wav","audio/wave","audio/ogg","audio/mp4","audio/x-m4a","audio/aac","audio/flac","audio/x-flac"], maxBytes: 10485760, label: 'audio' });
+    if (validationMessage) { showUploadError(event.target, validationMessage); return; }
     const extension = file.name.split('.').pop().toLowerCase();
     const audioTypes = {
       mp3: 'audio/mpeg',
@@ -205,16 +252,6 @@ export function labInit() {
       aac: 'audio/aac',
       flac: 'audio/flac'
     };
-    if (!Object.prototype.hasOwnProperty.call(audioTypes, extension)) {
-      alert('Choose an MP3, WAV, OGG, M4A, AAC, or FLAC audio file.');
-      event.target.value = '';
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      alert('For this animated lab, choose an audio file no larger than 10 MB.');
-      event.target.value = '';
-      return;
-    }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (readToken !== audioReadToken || S.dataType !== 'audio') return;
@@ -232,6 +269,9 @@ export function labInit() {
       player.controls = true;
       player.preload = 'metadata';
       player.className = 'selected-audio-preview';
+      player.addEventListener('error', () => {
+        if (readToken === audioReadToken) showUploadError(event.target, 'The audio preview could not load. The file may be damaged or use an unsupported codec.');
+      }, { once: true });
       player.addEventListener('loadedmetadata', () => {
         if (readToken !== audioReadToken) return;
         S.audioDuration = Number.isFinite(player.duration) ? player.duration : 0;
@@ -246,7 +286,7 @@ export function labInit() {
       labSplit();
     } catch (error) {
       console.error('Audio read failed', error);
-      alert('The selected audio file could not be read.');
+      showUploadError(event.target, 'The selected audio file could not be read. Please check the file or try another supported audio file.');
     }
   });
   $('#presets').innerHTML = PRESETS.map(

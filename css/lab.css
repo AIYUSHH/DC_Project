@@ -361,3 +361,19 @@
 .binary-packets .pk .s{align-items:baseline;gap:.25rem;font-size:.69rem;line-height:1.3}
 .binary-packets .pk .s b{min-width:3.1rem;font-size:.61rem}
 .binary-packets .payload-sample code{min-width:0;overflow-wrap:anywhere;font:.68rem var(--mono)}
+
+
+/* Clear, accessible validation feedback for Core Lab file uploads. */
+.upload-error {
+  margin: 0.15rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--bad) 65%, transparent);
+  border-left-width: 4px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--bad) 10%, var(--surface));
+  color: var(--bad);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.upload-error[hidden] { display: none !important; }
+.image-input input[type='file'][aria-invalid='true'] { border-color: var(--bad); }
