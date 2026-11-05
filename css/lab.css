@@ -339,3 +339,16 @@
   color: var(--muted);
   font-size: 0.62rem;
 }
+
+
+/* Video Data mode shares the compact binary-file transfer presentation. */
+.video-input[hidden]{display:none!important}
+.selected-video-preview,.reconstructed-video{display:block;width:min(100%,560px);max-height:360px;border:1px solid var(--line);border-radius:12px;background:#000}
+.video-preview{align-items:flex-start;flex-direction:column}
+.result.video-result{display:flex;justify-content:center}
+.packets.binary-packets{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.55rem}
+.binary-packets .pk{min-width:0;padding:.48rem .58rem;border-radius:9px;font-size:.74rem}
+.binary-packets .pk .t{margin-bottom:.28rem;font-size:.76rem;gap:.35rem}
+.binary-packets .pk .s{align-items:baseline;gap:.25rem;font-size:.69rem;line-height:1.3}
+.binary-packets .pk .s b{min-width:3.1rem;font-size:.61rem}
+.binary-packets .payload-sample code{min-width:0;overflow-wrap:anywhere;font:.68rem var(--mono)}

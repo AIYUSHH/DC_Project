@@ -62,10 +62,10 @@ function logLine(t, cls, msg, store = true) {
  * Stage 3 set-up: draws the queues and, if a run already exists, redraws its log and final state.
  */
 function senderQueueMarkup() {
-  if (S.dataType !== 'image' || S.P.length <= 48) {
+  if (!(S.dataType === 'image' || S.dataType === 'video') || S.P.length <= 48) {
     return S.P.map((_, i) => `<span class="chip c${i % 4}" id="q${i}">P${i + 1}</span>`).join('');
   }
-  return '<span class="hint">Image transfer · ' + S.P.length.toLocaleString() + ' packets processed in batches (sample shown)</span>' +
+  return '<span class="hint">Binary file transfer · ' + S.P.length.toLocaleString() + ' packets processed in batches (sample shown)</span>' +
     S.P.slice(0, 12).map((_, i) => `<span class="chip c${i % 4}" id="q${i}">P${i + 1}</span>`).join('');
 }
 
@@ -77,12 +77,12 @@ export function labPrepare() {
   const r = S.run;
   if (r) {
     r.log.forEach(l => logLine(l[0], l[1], l[2], false));
-    const queueLimit = S.dataType === 'image' ? 12 : S.P.length;
+    const queueLimit = (S.dataType === 'image' || S.dataType === 'video') ? 12 : S.P.length;
     for (let i = 0; i < queueLimit; i++) {
       const chip = $('#q' + i);
       if (chip) chip.classList.add(r.got[i] ? 'ok' : 'bad');
     }
-    const arrivedPreview = r.arr.slice(0, S.dataType === 'image' ? 24 : r.arr.length);
+    const arrivedPreview = r.arr.slice(0, (S.dataType === 'image' || S.dataType === 'video') ? 24 : r.arr.length);
     $('#rq').innerHTML = (r.arr.length > arrivedPreview.length ? '<span class="hint">' + r.arr.length.toLocaleString() + ' packets received; sample shown</span>' : '') +
       arrivedPreview.map(i => `<span class="chip c${i % 4} ok live">P${i + 1}</span>`).join('');
     const miss = r.got.filter(x => !x).length;
@@ -126,10 +126,10 @@ export async function transmit() {
   if (S.busy || !S.up) return;
   if (!S.P.length) labSplit();
   if (!S.P.length) {
-    $('#st').textContent = 'Enter text or choose an image first.';
+    $('#st').textContent = 'Enter text or choose an image or video first.';
     return;
   }
-  const imageMode = S.dataType === 'image';
+  const binaryMode = S.dataType === 'image' || S.dataType === 'video';
   const tok = ++S.tok;
   S.busy = true;
   const alive = () => tok === S.tok;
@@ -143,9 +143,9 @@ export async function transmit() {
   const corrupt = +$('#corr').value / 100;
   const maxRetry = +$('#retries').value;
   const speed = +$('#spd').value;
-  // Image packets are grouped into small visible patches. Each patch gets a
-  // deliberate travel animation so learners can follow it across the link.
-  const batchSize = imageMode ? 16 : 1;
+  // Binary file packets are grouped into visible patches. Video uses larger patches
+  // to keep larger files practical while retaining the image transfer animation.
+  const batchSize = S.dataType === 'video' ? 64 : binaryMode ? 16 : 1;
   const imagePatchDuration = Math.max(650, 900 / speed);
   S.run = {
     arr: [],
@@ -182,7 +182,7 @@ export async function transmit() {
     } else if (S.run === run) S.run = null;
   };
   let progress = $('#imageTransferProgress');
-  if (imageMode && !progress) {
+  if (binaryMode && !progress) {
     progress = document.createElement('div');
     progress.id = 'imageTransferProgress';
     progress.className = 'image-transfer-progress';
@@ -190,7 +190,7 @@ export async function transmit() {
     $('#st').after(progress);
   }
   const updateProgress = () => {
-    if (!imageMode || !progress) return;
+    if (!binaryMode || !progress) return;
     const pct = Math.round((run.sent / P.length) * 100);
     const deliveredPct = Math.round((run.arr.length / P.length) * 100);
     progress.querySelector('span').style.width = pct + '%';
@@ -200,25 +200,25 @@ export async function transmit() {
       run.retries.toLocaleString() + ' retries · ' + pct + '%';
   };
   logLine('START', '', `Sending ${P.length.toLocaleString()} packet${P.length === 1 ? '' : 's'}` +
-    (imageMode ? ` in visible patches of ${batchSize} packets` : '') +
+    (binaryMode ? ` in visible patches of ${batchSize} packets` : '') +
     ` at ${run.cfg.loss}% loss and ${run.cfg.corrupt}% corruption.`);
   for (let offset = 0; offset < order.length; offset += batchSize) {
     const batch = order.slice(offset, offset + batchSize);
     reset(pkt);
-    pkt.textContent = imageMode ? 'Patch ' + (Math.floor(offset / batchSize) + 1) + ' · ' + batch.length + ' packets' : 'P' + (batch[0] + 1);
+    pkt.textContent = binaryMode ? 'Patch ' + (Math.floor(offset / batchSize) + 1) + ' · ' + batch.length + ' packets' : 'P' + (batch[0] + 1);
     pkt.className = 'fly';
     pkt.style.opacity = 1;
     pkt.style.background = '';
-    $('#st').textContent = imageMode
+    $('#st').textContent = binaryMode
       ? `Transmitting patch ${Math.floor(offset / batchSize) + 1} of ${Math.ceil(P.length / batchSize)} (${batch.length} packets)...`
       : `Sending packet ${batch[0] + 1}...`;
-    if (imageMode) {
+    if (binaryMode) {
       await fly(pkt, '100%', imagePatchDuration);
       if (!alive()) return stopped();
     }
 
-    let batchReceived = 0, batchLost = 0, batchCorrupt = 0;
-    if (imageMode) {
+    let batchReceived = 0, batchLost = 0, batchCorrupt = 0, batchRetries = 0;
+    if (binaryMode) {
       // Image batches are transmitted in visible rounds. The first round sends
       // every packet; each later round visibly retransmits only packets that
       // were lost or failed their integrity check in the previous round.
@@ -340,7 +340,7 @@ export async function transmit() {
           }
           if (isBad) {
             batchCorrupt++;
-            const expected = packetCrc(i, P[i], imageMode);
+            const expected = packetCrc(i, P[i], binaryMode);
             const seen = expected ^ (1 << Math.floor(Math.random() * 8));
             pkt.className = 'fly corrupt';
             logLine('CRC', 'bad', `Packet ${i + 1} failed CRC: expected ${hex(expected)}, received ${hex(seen)}. Discarded.`);
@@ -386,13 +386,13 @@ export async function transmit() {
         run.sent++;
       }
     }
-    if (imageMode) {
+    if (binaryMode) {
       logLine('BATCH', batchReceived === batch.length ? 'ok' : 'warn',
         `Patch ${Math.floor(offset / batchSize) + 1}: ${batchReceived}/${batch.length} packets received in this patch; ${run.arr.length}/${P.length} delivered overall.`);
     }
     updateProgress();
     $('#rp').textContent = `${run.arr.length.toLocaleString()} of ${P.length.toLocaleString()} received`;
-    if (imageMode) {
+    if (binaryMode) {
       $('#st').textContent = `Processed ${run.sent.toLocaleString()} of ${P.length.toLocaleString()} packets; ${run.arr.length.toLocaleString()} delivered overall. ${batchReceived} arrived in the latest patch.`;
       await sleep(Math.max(80, 140 / speed));
       if (!alive()) return stopped();
@@ -405,7 +405,7 @@ export async function transmit() {
   $('#st').textContent = miss
     ? `Transmission incomplete: ${miss.toLocaleString()} packet(s) remain missing. Open the receiver to inspect the gaps.`
     : `Transmission complete. All ${P.length.toLocaleString()} packets arrived and passed their checks.`;
-  if (imageMode) updateProgress();
+  if (binaryMode) updateProgress();
   S.busy = false;
   syncGo();
   flag('transmitted');

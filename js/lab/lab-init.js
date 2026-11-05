@@ -35,33 +35,41 @@ export function labInit() {
   $('#msg').value = S.msg;
   let textPayloadSize = $('#ps').value;
   let imageReadToken = 0;
+  let videoReadToken = 0;
   const setMode = mode => {
     imageReadToken++;
+    videoReadToken++;
     const previousMode = S.dataType;
     S.dataType = mode;
     $('#textInput').hidden = mode !== 'text';
     $('#presets').hidden = mode !== 'text';
     $('#imageInput').hidden = mode !== 'image';
-    $('#textMode').classList.toggle('active', mode === 'text');
-    $('#imageMode').classList.toggle('active', mode === 'image');
-    $('#textMode').classList.toggle('ghost', mode !== 'text');
-    $('#imageMode').classList.toggle('ghost', mode !== 'image');
-    $('#textMode').setAttribute('aria-pressed', String(mode === 'text'));
-    $('#imageMode').setAttribute('aria-pressed', String(mode === 'image'));
-    $('#resultTitle').textContent = mode === 'image' ? 'Reconstructed image' : 'Reassembled message';
-    if (mode === 'text') { S.imageMimeType = null; S.imageName = null; S.imageSize = 0; $('#ps').min = '1'; $('#ps').max = '8'; $('#ps').step = '1'; $('#ps').value = textPayloadSize; encodeMsg(); labSplit(); }
-    else {
-      if (previousMode !== 'image') textPayloadSize = $('#ps').value;
+    $('#videoInput').hidden = mode !== 'video';
+    for (const [id, active] of [['textMode', 'text'], ['imageMode', 'image'], ['videoMode', 'video']]) {
+      const button = $('#' + id);
+      button.classList.toggle('active', mode === active);
+      button.classList.toggle('ghost', mode !== active);
+      button.setAttribute('aria-pressed', String(mode === active));
+    }
+    $('#resultTitle').textContent = mode === 'image' ? 'Reconstructed image' : mode === 'video' ? 'Reconstructed video' : 'Reassembled message';
+    if (mode === 'text') {
+      S.imageMimeType = null; S.imageName = null; S.imageSize = 0;
+      S.videoMimeType = null; S.videoName = null; S.videoSize = 0; S.videoDuration = 0; S.videoWidth = 0; S.videoHeight = 0;
+      $('#ps').min = '1'; $('#ps').max = '8'; $('#ps').step = '1'; $('#ps').value = textPayloadSize;
+      encodeMsg(); labSplit();
+    } else {
+      if (previousMode === 'text') textPayloadSize = $('#ps').value;
       $('#ps').min = '256'; $('#ps').max = '1200'; $('#ps').step = '16'; $('#ps').value = '1200';
-      S.bytes = [];
-      $('#bytes').innerHTML = '<p class="hint">Choose an image to inspect its binary data.</p>';
-      $('#bsum').textContent = 'No image selected.';
+      S.bytes = []; S.run = null;
+      $('#bytes').innerHTML = '<p class="hint">Choose a ' + mode + ' to inspect its binary data.</p>';
+      $('#bsum').textContent = 'No ' + mode + ' selected.';
       $('#mstats').innerHTML = '';
       labSplit();
     }
   };
   $('#textMode').onclick = () => setMode('text');
   $('#imageMode').onclick = () => setMode('image');
+  $('#videoMode').onclick = () => setMode('video');
   $('#imageFile').addEventListener('change', async event => {
     const readToken = ++imageReadToken;
     const file = event.target.files && event.target.files[0];
@@ -81,6 +89,35 @@ export function labInit() {
       $('#imagePreview').append(img, meta);
       encodeMsg(); labSplit();
     } catch (error) { console.error('Image read failed', error); alert('The selected image could not be read.'); }
+  });
+  $('#videoFile').addEventListener('change', async event => {
+    const readToken = ++videoReadToken;
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) { alert('Choose an MP4, WebM, or MOV video.'); event.target.value = ''; return; }
+    if (file.size > 10 * 1024 * 1024) { alert('For this animated lab, choose a video no larger than 10 MB.'); event.target.value = ''; return; }
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (readToken !== videoReadToken || S.dataType !== 'video') return;
+      if (S.videoUrl) URL.revokeObjectURL(S.videoUrl);
+      S.videoUrl = URL.createObjectURL(file);
+      S.videoMimeType = file.type; S.videoName = file.name; S.videoSize = file.size;
+      S.bytes = Array.from(bytes); S.run = null;
+      const preview = $('#videoPreview'); preview.replaceChildren();
+      const player = document.createElement('video');
+      player.src = S.videoUrl; player.controls = true; player.preload = 'metadata'; player.className = 'selected-video-preview';
+      player.addEventListener('loadedmetadata', () => {
+        if (readToken !== videoReadToken) return;
+        S.videoDuration = Number.isFinite(player.duration) ? player.duration : 0;
+        S.videoWidth = player.videoWidth || 0; S.videoHeight = player.videoHeight || 0;
+        encodeMsg();
+        const meta = preview.querySelector('p');
+        if (meta) meta.textContent = file.name + ' · ' + (file.size / (1024 * 1024)).toFixed(2) + ' MB · ' + S.videoDuration.toFixed(1) + ' sec · ' + S.videoWidth + ' × ' + S.videoHeight;
+      }, { once: true });
+      const meta = document.createElement('p'); meta.textContent = file.name + ' · ' + (file.size / (1024 * 1024)).toFixed(2) + ' MB · Reading metadata…';
+      preview.append(player, meta);
+      encodeMsg(); labSplit();
+    } catch (error) { console.error('Video read failed', error); alert('The selected video could not be read.'); }
   });
   $('#presets').innerHTML = PRESETS.map(
     p => `<button class="chipbtn" type="button">${esc(p)}</button>`
