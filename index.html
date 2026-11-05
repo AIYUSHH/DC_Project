@@ -219,11 +219,11 @@
               <div class="eyebrow">Core lab · Step 1 of 4</div>
               <h2>Turn data into bytes</h2>
               <p>
-                Text is encoded as UTF-8 bytes. Images and videos are treated as binary data and use the same packet and transmission pipeline.
+                Text is encoded as UTF-8 bytes. Images, videos, documents and audio files are preserved as binary data and use the same packet and transmission pipeline.
               </p>
             </div>
             <div class="panel">
-              <div class="data-mode" role="group" aria-label="Choose data type"><button class="btn sm active" id="textMode" type="button" aria-pressed="true">Text</button><button class="btn ghost sm" id="imageMode" type="button" aria-pressed="false">Image</button><button class="btn ghost sm" id="videoMode" type="button" aria-pressed="false">Video</button></div>
+              <div class="data-mode" role="group" aria-label="Choose data type"><button class="btn sm active" id="textMode" type="button" aria-pressed="true">Text</button><button class="btn ghost sm" id="imageMode" type="button" aria-pressed="false">Image</button><button class="btn ghost sm" id="videoMode" type="button" aria-pressed="false">Video</button><button class="btn ghost sm" id="documentMode" type="button" aria-pressed="false">Documents</button><button class="btn ghost sm" id="audioMode" type="button" aria-pressed="false">Audio</button></div>
               <div class="field" id="textInput">
                 <label for="msg">Your message</label
                 ><textarea
@@ -235,6 +235,8 @@
               </div>
               <div class="image-input" id="imageInput" hidden><label for="imageFile">Choose an image (PNG, JPG, WebP · max 2 MB)</label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" /><div class="image-preview" id="imagePreview"><p class="hint">Choose an image to preview it here.</p></div></div>
               <div class="image-input video-input" id="videoInput" hidden><label for="videoFile">Choose a video (MP4, WebM, MOV · max 10 MB)</label><input id="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime" /><div class="image-preview video-preview" id="videoPreview"><p class="hint">Choose a video to preview it here.</p></div></div>
+              <div class="image-input document-input" id="documentInput" hidden><label for="documentFile">Choose a document (PDF, DOCX, DOC, TXT, RTF · max 5 MB)</label><input id="documentFile" type="file" accept=".pdf,.docx,.doc,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,application/rtf,text/rtf" /><div class="image-preview document-preview" id="documentPreview"><p class="hint">Choose a document to inspect its details. PDF and TXT files can be previewed here; other formats are downloaded after reconstruction.</p></div></div>
+              <div class="image-input audio-input" id="audioInput" hidden><label for="audioFile">Choose an audio file (MP3, WAV, OGG, M4A, AAC, FLAC · max 10 MB)</label><input id="audioFile" type="file" accept=".mp3,.wav,.ogg,.oga,.m4a,.aac,.flac,audio/mpeg,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/aac,audio/flac" /><div class="image-preview audio-preview" id="audioPreview"><p class="hint">Choose an audio file to listen to it before transmission.</p></div></div>
               <div
                 class="presets"
                 id="presets"

@@ -28,15 +28,17 @@ import { setTop } from './top-stats.js';
  * Side effects: updates S.msg and S.bytes, the DOM, the top-bar counters, and records the "typed" flag.
  */
 export function encodeMsg() {
-  if (S.dataType === 'image' || S.dataType === 'video') {
-    $('#bytes').innerHTML = '<div class="image-byte-summary"><strong>' + S.bytes.length.toLocaleString() + ' binary bytes</strong><span>Raw image bytes are preserved; no UTF-8 decoding is performed.</span></div>';
+  if (S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio') {
     const isVideo = S.dataType === 'video';
-    const fileName = isVideo ? S.videoName : S.imageName;
-    const mimeType = isVideo ? S.videoMimeType : S.imageMimeType;
-    const fileSize = isVideo ? S.videoSize : S.imageSize;
-    const details = isVideo ? (S.videoWidth && S.videoHeight ? S.videoWidth + ' × ' + S.videoHeight : 'Video') + (S.videoDuration ? ' · ' + S.videoDuration.toFixed(1) + ' sec' : '') : 'Binary image';
-    $('#bsum').textContent = (fileName || (isVideo ? 'Video' : 'Image')) + ' · ' + S.bytes.length.toLocaleString() + ' bytes · ' + (mimeType || 'binary data');
-    $('#mstats').innerHTML = [[S.bytes.length.toLocaleString(), 'bytes'], [fileSize ? (isVideo ? (fileSize / (1024 * 1024)).toFixed(2) + ' MB' : (fileSize / 1024).toFixed(2) + ' KB') : '—', 'file size'], [details, isVideo ? 'video details' : 'data format']].map(([v, name]) => '<div class="stat"><b>' + v + '</b><span>' + name + '</span></div>').join('');
+    const isDocument = S.dataType === 'document';
+    const isAudio = S.dataType === 'audio';
+    const fileName = isAudio ? S.audioName : isDocument ? S.documentName : isVideo ? S.videoName : S.imageName;
+    const mimeType = isAudio ? S.audioMimeType : isDocument ? S.documentMimeType : isVideo ? S.videoMimeType : S.imageMimeType;
+    const fileSize = isAudio ? S.audioSize : isDocument ? S.documentSize : isVideo ? S.videoSize : S.imageSize;
+    const details = isAudio ? 'Audio' + (S.audioDuration ? ' · ' + S.audioDuration.toFixed(1) + ' sec' : '') : isDocument ? (mimeType || 'Document') + ' · original file bytes' : isVideo ? (S.videoWidth && S.videoHeight ? S.videoWidth + ' × ' + S.videoHeight : 'Video') + (S.videoDuration ? ' · ' + S.videoDuration.toFixed(1) + ' sec' : '') : 'Binary image';
+    $('#bytes').innerHTML = '<div class="image-byte-summary"><strong>' + S.bytes.length.toLocaleString() + ' binary bytes</strong><span>Original file bytes are preserved; no UTF-8 conversion is performed.</span></div>';
+    $('#bsum').textContent = (fileName || (isAudio ? 'Audio' : isDocument ? 'Document' : isVideo ? 'Video' : 'Image')) + ' · ' + S.bytes.length.toLocaleString() + ' bytes · ' + (mimeType || 'binary data');
+    $('#mstats').innerHTML = [[S.bytes.length.toLocaleString(), 'bytes'], [fileSize ? (fileSize / (1024 * 1024)).toFixed(2) + ' MB' : '—', 'file size'], [details, isAudio ? 'audio details' : isDocument ? 'document format' : isVideo ? 'video details' : 'data format']].map(([v, name]) => '<div class="stat"><b>' + v + '</b><span>' + name + '</span></div>').join('');
     setTop(S.bytes.length);
     return;
   }

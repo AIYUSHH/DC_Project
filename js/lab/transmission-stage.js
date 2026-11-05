@@ -62,7 +62,7 @@ function logLine(t, cls, msg, store = true) {
  * Stage 3 set-up: draws the queues and, if a run already exists, redraws its log and final state.
  */
 function senderQueueMarkup() {
-  if (!(S.dataType === 'image' || S.dataType === 'video') || S.P.length <= 48) {
+  if (!(S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio') || S.P.length <= 48) {
     return S.P.map((_, i) => `<span class="chip c${i % 4}" id="q${i}">P${i + 1}</span>`).join('');
   }
   return '<span class="hint">Binary file transfer · ' + S.P.length.toLocaleString() + ' packets processed in batches (sample shown)</span>' +
@@ -77,12 +77,12 @@ export function labPrepare() {
   const r = S.run;
   if (r) {
     r.log.forEach(l => logLine(l[0], l[1], l[2], false));
-    const queueLimit = (S.dataType === 'image' || S.dataType === 'video') ? 12 : S.P.length;
+    const queueLimit = (S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio') ? 12 : S.P.length;
     for (let i = 0; i < queueLimit; i++) {
       const chip = $('#q' + i);
       if (chip) chip.classList.add(r.got[i] ? 'ok' : 'bad');
     }
-    const arrivedPreview = r.arr.slice(0, (S.dataType === 'image' || S.dataType === 'video') ? 24 : r.arr.length);
+    const arrivedPreview = r.arr.slice(0, (S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio') ? 24 : r.arr.length);
     $('#rq').innerHTML = (r.arr.length > arrivedPreview.length ? '<span class="hint">' + r.arr.length.toLocaleString() + ' packets received; sample shown</span>' : '') +
       arrivedPreview.map(i => `<span class="chip c${i % 4} ok live">P${i + 1}</span>`).join('');
     const miss = r.got.filter(x => !x).length;
@@ -126,10 +126,10 @@ export async function transmit() {
   if (S.busy || !S.up) return;
   if (!S.P.length) labSplit();
   if (!S.P.length) {
-    $('#st').textContent = 'Enter text or choose an image or video first.';
+    $('#st').textContent = 'Enter text or choose an image, video, document, or audio file first.';
     return;
   }
-  const binaryMode = S.dataType === 'image' || S.dataType === 'video';
+  const binaryMode = S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio';
   const tok = ++S.tok;
   S.busy = true;
   const alive = () => tok === S.tok;
@@ -145,7 +145,7 @@ export async function transmit() {
   const speed = +$('#spd').value;
   // Binary file packets are grouped into visible patches. Video uses larger patches
   // to keep larger files practical while retaining the image transfer animation.
-  const batchSize = S.dataType === 'video' ? 64 : binaryMode ? 16 : 1;
+  const batchSize = S.dataType === 'video' ? 64 : S.dataType === 'audio' ? 32 : binaryMode ? 16 : 1;
   const imagePatchDuration = Math.max(650, 900 / speed);
   S.run = {
     arr: [],
@@ -196,7 +196,7 @@ export async function transmit() {
     progress.querySelector('span').style.width = pct + '%';
     progress.querySelector('p').textContent =
       run.sent.toLocaleString() + ' / ' + P.length.toLocaleString() +
-      ' packets processed · ' + run.arr.length.toLocaleString() + ' delivered · '
+      ' packets processed · ' + run.arr.length.toLocaleString() + ' delivered · ' +
       run.retries.toLocaleString() + ' retries · ' + pct + '%';
   };
   logLine('START', '', `Sending ${P.length.toLocaleString()} packet${P.length === 1 ? '' : 's'}` +

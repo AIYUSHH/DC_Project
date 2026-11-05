@@ -57,18 +57,18 @@ export function labSplit() {
     S.run = null;
     labSig = sig;
   }
-  if ((S.dataType === 'image' || S.dataType === 'video')) {
+  if ((S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio')) {
     $('#pstream').innerHTML = '<p class="hint">Binary file bytes are kept as a binary buffer. Packet cards below show a sample; the full packet set is processed during transmission.</p>';
   } else {
     $('#pstream').innerHTML = S.P.length
       ? S.P.map((p, i) => p.map(x => `<span class="chip c${i % 4}" data-p="${i}">${hex(x)}</span>`).join('')).join('')
       : '<p class="hint">No data yet. Enter text or choose an image first.</p>';
   }
-  const packetPreviewCount = (S.dataType === 'image' || S.dataType === 'video') ? 16 : 120;
+  const packetPreviewCount = (S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio') ? 16 : 120;
   const visiblePackets = S.P.slice(0, packetPreviewCount);
   const packetCards = visiblePackets.map((p, i) => {
-    const crc = hex(packetCrc(i, p, (S.dataType === 'image' || S.dataType === 'video')));
-    if ((S.dataType === 'image' || S.dataType === 'video')) {
+    const crc = hex(packetCrc(i, p, (S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio')));
+    if ((S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio')) {
       const sampleSize = 6;
       const sample = hexs(p.slice(0, sampleSize));
       const remaining = Math.max(0, p.length - sampleSize);
@@ -82,9 +82,9 @@ export function labSplit() {
     }
     return `<div class="pk c${i % 4}" tabindex="0" data-p="${i}"><div class="t"><span>Packet ${i + 1}</span><span>${p.length} B</span></div><div class="s"><b>Header</b>seq ${i + 1}, length ${p.length}</div><div class="s"><b>Payload</b><span>${hexs(p)}</span></div><div class="s"><b>CRC-8 trailer</b><span>${crc}</span></div></div>`;
   }).join('');
-  $('#pk').classList.toggle('image-packets', (S.dataType === 'image' || S.dataType === 'video'));
+  $('#pk').classList.toggle('image-packets', (S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio'));
   $('#pk').innerHTML = (S.P.length > packetPreviewCount ? '<p class="hint">Showing ' + packetPreviewCount + ' compact sample packets of ' + S.P.length.toLocaleString() + '. Binary-file payload cards show the first 6 bytes only; all bytes are still transmitted.</p>' : '') + packetCards;
-  const over = S.P.length * (((S.dataType === 'image' || S.dataType === 'video') ? 4 : HDR) + TRL),
+  const over = S.P.length * (((S.dataType === 'image' || S.dataType === 'video' || S.dataType === 'document' || S.dataType === 'audio') ? 4 : HDR) + TRL),
     tot = S.bytes.length + over;
   $('#pstats').innerHTML = [
     [S.P.length, 'packets'],
