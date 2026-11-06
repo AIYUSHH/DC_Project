@@ -49,6 +49,7 @@ import './modules/transport-layer/network-performance.js';
 import './modules/application-layer/dns.js';
 import './modules/application-layer/http-tls.js';
 import './modules/advanced/encapsulation.js';
+import './modules/advanced/encryption.js';
 import './modules/advanced/packet-capture.js';
 import './modules/advanced/troubleshooting.js';
 import './modules/advanced/firewall.js';
