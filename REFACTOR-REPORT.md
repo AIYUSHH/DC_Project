@@ -1,6 +1,10 @@
 # Refactor report
 
-Scope: split the three-file project (`index.html`, one `css/style.css`, one ~3,000-line concatenated `js/app.js`) into ES modules and ordered stylesheets, add documentation, and change **no behaviour**. The original three files were left untouched in `/home/claude` next to this folder.
+> **Report status (updated 8 November 2026):** Sections 1–9 preserve the record of the original modularization and the tests performed at that time. Section 10 records important feature work merged into `main` afterward. The historical test results below must not be interpreted as a fresh regression test of the current application.
+
+## Original refactor scope
+
+The initial refactor split the three-file project (`index.html`, one `css/style.css`, one ~3,000-line concatenated `js/app.js`) into ES modules and ordered stylesheets. Its stated goal was to preserve behaviour, apart from the explicitly documented changes. The original three files were left untouched in the original working environment.
 
 ## 1. Structure before and after
 
@@ -92,3 +96,88 @@ The code was **moved mechanically, not retyped**. A script parsed every top-leve
 ## 9. Git
 
 See README section 12. Short version: work on a branch, commit as one change, keep `main` untouched until verified.
+
+
+## 10. Subsequent development recorded on `main` (through 8 November 2026)
+
+The original modularization was followed by several feature additions and fixes. These changes expand the application beyond the initial snapshot described in sections 1–9.
+
+### End-to-end transmission now supports binary media
+
+The core transmission journey was extended beyond text to support:
+- Images
+- Videos
+- Documents
+- Audio files
+
+The binary-media flow includes file selection and preview, byte-oriented metadata, packetization, animated transmission, receiver-side reassembly, and reconstructed output. Upload validation was also improved so unsupported formats and files exceeding configured size limits display a visible warning instead of silently failing.
+
+**Architecture note:** The feature is integrated into the existing core lab rather than being a separate standalone simulator. The main workflow remains organized under `js/lab/`, with supporting logic in `js/simulations/` and the learning journey UI in the relevant learning module.
+
+### Error correction added alongside error detection
+
+The link-layer learning module now covers both detecting errors and attempting to recover corrupted data. The implementation includes:
+- SECDED Hamming code
+- Two-dimensional parity with correction support
+- Reed–Solomon RS(15,11) demonstration
+- Error-pattern injection and interactive correction workflows
+
+The correction activities were subsequently revised to be more button-driven and easier to follow. Detection and correction are distinct concepts: a detection method can identify corruption without necessarily recovering the original data.
+
+Relevant implementation areas include `js/modules/link-layer/error-detection.js` and supporting simulation files under `js/simulations/`.
+
+### Encryption and decryption learning lab expanded
+
+The advanced learning area now includes stage-by-stage encryption/decryption demonstrations for:
+- Caesar cipher (classical teaching example)
+- XOR byte cipher (educational example)
+- AES-256-GCM
+- RSA-OAEP with AES-GCM hybrid encryption
+- ECDH P-256 key agreement with AES-GCM
+- SHA-256 hashing
+
+The lab exposes intermediate processing stages and receiver-side results. SHA-256 is a one-way hash, not an encryption algorithm. Caesar and XOR are intentionally insecure teaching examples; these demonstrations are not a substitute for vetted production cryptography.
+
+Primary UI implementation: `js/modules/advanced/encryption.js`. Supported modern cryptographic operations rely on the browser Web Crypto API.
+
+### DNS learning now includes a hosted iterative lookup option
+
+In addition to the simulated DNS hierarchy and cache, a live iterative-resolution learning tab was added. It uses a separately hosted DNS resolver worker and includes CNAME traversal handling and a configurable/persisted worker endpoint.
+
+This introduces an external deployment dependency for the live lookup feature. The local simulated DNS lesson remains a separate educational mode. Review the DNS worker deployment instructions in the README before expecting the live lookup to work on a fresh deployment.
+
+### Other recorded improvements
+
+- The congestion-window event selector was fixed so the selected event scenario refreshes the visualization.
+- The error-correction workflow and its validation/interaction design were polished.
+- The end-to-end journey was updated to understand binary media rather than assuming every message is text.
+- README documentation was refreshed to describe the current feature set, Firebase setup, local development, project layout, troubleshooting, and simulation limitations.
+
+### Current architecture at a glance
+
+The project continues to use native JavaScript ES modules and the existing module-registration pattern:
+- `js/app.js` is the application entry point and imports modules for registration.
+- `js/modules/registry.js` defines the learning groups and the four core-lab stages.
+- `js/modules/` contains the learning-module interfaces.
+- `js/simulations/` contains reusable protocol, encoding, error-control, and network simulation logic.
+- `js/lab/` contains the end-to-end transmission stages.
+- `js/core/` contains shared state, encoding, storage, addressing, and UI helpers.
+- `js/app/` contains routing, navigation, progress, search, and related application behaviour.
+- `js/auth/` contains Firebase client and account flows.
+
+The module registry currently describes seven learning groups: Link and errors, Reliable transfer, Network layer, Transport layer, Application layer, Advanced, and Journey and learning. It also defines four core-lab stages: Message & Encoding, Packetization, Transmission Lab, and Receiver & Reconstruction.
+
+### Verification status and limitations
+
+The test table in section 7 belongs to the original refactor validation run. The later feature commits listed above document implementation work and fixes, but this report update did not execute a new browser test suite, cross-browser test, accessibility audit, or end-to-end regression run.
+
+Before treating the current `main` branch as fully verified, run the current application and specifically retest:
+1. Text, image, video, document, and audio transmission, including invalid type/oversized-file warnings and receiver reconstruction.
+2. Error detection and each correction workflow, including correctable and uncorrectable patterns.
+3. Every encryption mode, stage-by-stage output, file handling where supported, and receiver verification.
+4. Simulated DNS/cache behaviour and live iterative DNS with a correctly configured worker endpoint.
+5. Congestion-window differences for duplicate-ACK and timeout scenarios.
+6. Authentication, account-isolated Firestore progress, navigation, responsive layouts, and browser Back/Forward.
+7. Firefox, Safari, keyboard-only navigation, screen-reader behaviour, and a physical mobile device.
+
+No claim is made here that these newer workflows have passed those tests. Record actual browser, environment, test date, and outcome when the checks are performed.
