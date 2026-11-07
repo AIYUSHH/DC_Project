@@ -1,158 +1,199 @@
 # BitSecure — Data Communications Lab
 
-BitSecure is an interactive, browser-based data communications and networking learning lab. Explore how a message moves through network layers, inspect protocol headers, simulate network behaviour, and practise with guided modules and challenges.
+BitSecure is an interactive, browser-based Data Communications and Computer Networks learning platform. It combines guided lessons with hands-on protocol labs and visual simulations. Learners can follow data from an application message through packetization and transmission, inspect networking concepts layer by layer, and experiment with errors, security, routing, and network behaviour.
 
-## Features
+> **Learning environment:** Most networking activities are educational simulations that run in the browser. They do not configure the learner's operating system, change a real firewall/router, or send simulated packets across the public internet.
 
-- **Core end-to-end lab:** follow text through UTF-8 bytes, packetization, transmission over a simulated lossy link, retries, reassembly, and decoding.
-- **Link layer:** framing and stuffing, error detection, Stop-and-Wait, and sliding-window ARQ.
-- **Network layer:** IPv4/subnet practice, IP headers, routing, a visual Network Topology Builder, and a Wi-Fi and Wireless Networking Simulator with SSID/band/channel settings, coverage, simplified interference, obstacles, and Ethernet comparison.
-- **Transport layer:** TCP/UDP comparisons and header building, handshake steps, congestion control, sockets, and a Network Performance Analyzer for estimated transfer time, throughput, delivery ratio, and retransmissions.
-- **Application layer:** DNS resolution and caching, an HTTP Status Code Explorer based on the IANA registry, HTTP request/response simulations, and TLS handshake/encryption demonstrations.
-- **Advanced topics:** encapsulation, packet capture and display filters, and troubleshooting exercises.
-- **Learning tools:** tutorials, challenges/quizzes, glossary, searchable Network Protocol Comparison Lab with an interactive OSI-vs-TCP/IP layer map, progress indicators, achievements, and theme selection.
-- **Accounts:** Firebase Authentication email/password sign-up and sign-in, password-reset email, email verification, profile menu, password change, and sign-out.
-- **Cloud progress:** Firestore synchronization of existing saved progress, achievements, run history, quiz statistics, notes, theme, and last visited screen for the signed-in account.
-- **Responsive interface:** desktop sidebar controls and a mobile navigation drawer.
+## Highlights
 
-The Network Performance Analyzer uses a seeded, stop-and-wait model with configurable bandwidth, round-trip time, packet loss, packet size, packet count, and retry limits. Its outputs are estimates only; it does not measure the live internet connection or send real packets.
+### End-to-end data transmission
+- Explore the complete sender-to-receiver journey: input, encoding, packetization, link transmission, and reconstruction.
+- Work with **text, images, videos, documents, and audio files** in the core transmission lab.
+- Inspect bytes, packet headers, payloads, checksums, delivery order, acknowledgements, retries, and reassembly.
+- Experiment with packet loss, bit corruption, delivery order, retry limits, and transmission speed.
 
-Most networking demonstrations are simulations intended for learning; the HTTP server and network scenarios shown in the modules are not real remote services.
+### Link layer and reliable delivery
+- Study framing and byte/bit stuffing.
+- Compare parity, Internet checksum, CRC-8, and CRC-32 error-detection techniques.
+- Experiment with error correction using **SECDED Hamming code, two-dimensional parity, and Reed–Solomon coding**.
+- Simulate Stop-and-Wait and Sliding Window ARQ, including acknowledgements, timeouts, and retransmissions.
+
+### Network layer
+- Practise IPv4 addressing and subnet calculations.
+- Inspect IP headers and routing decisions.
+- Build and explore network topologies.
+- Experiment with a Wi-Fi simulator covering access points, clients, SSID, band, channel, signal coverage, simplified interference, and obstacles.
+
+### Transport layer
+- Compare TCP and UDP and inspect transport headers and ports.
+- Step through the TCP handshake.
+- Explore congestion control, congestion-window behaviour, duplicate ACKs, and timeout scenarios.
+- Learn about sockets and multiplexing.
+- Use the Network Performance Analyzer to estimate transfer time, throughput, delivery ratio, and retransmissions from configurable bandwidth, RTT, packet loss, packet size, packet count, and retry settings.
+
+### Application layer and security
+- Visualize DNS resolution and caching.
+- Explore HTTP requests, responses, methods, and status codes.
+- Step through TLS handshake and related security concepts.
+- Use the encryption and decryption lab to inspect processing stages for Caesar and XOR teaching ciphers, AES-256-GCM, RSA-OAEP with AES-GCM hybrid encryption, ECDH P-256 key agreement with AES-GCM, and SHA-256 hashing.
+- Inspect intermediate outputs and receiver-side results in supported demonstrations.
+
+**Cryptography note:** Caesar and XOR are intentionally insecure teaching examples. SHA-256 is a one-way hash, not encryption. The browser-based demonstrations are for learning and should not replace vetted protocols and libraries in production applications.
+
+### Advanced and learning features
+- Study encapsulation and decapsulation across networking layers.
+- Inspect packet captures and practise display filtering.
+- Work through guided troubleshooting exercises.
+- Create ordered packet-filtering rules in the Firewall and Access Control Lab, test sample traffic, and see first-match decisions and rule-order effects.
+- Use the searchable Network Protocol Comparison Lab, including an interactive OSI and TCP/IP layer mapping.
+- Explore the guided learning journey, tutorials, challenges, quizzes, glossary, achievements, and progress indicators.
+
+### Accounts and progress
+- Firebase Authentication supports email/password sign-up and sign-in, email verification, password reset, password change, and sign-out.
+- Firestore synchronizes account-specific learning progress, achievements, run history, quiz statistics, notes, theme, and last visited screen.
+- A local account-specific cache helps preserve progress when cloud access is temporarily unavailable.
+- Responsive navigation includes a collapsible desktop sidebar and a mobile navigation drawer.
+
+## Technology
+
+- HTML, CSS, and vanilla JavaScript using native ES modules.
+- Firebase Authentication and Cloud Firestore for account and progress features.
+- Browser Web Crypto API for supported cryptography demonstrations.
+- Browser storage for local preferences and cached learning progress.
 
 ## Requirements
 
-- A modern browser with JavaScript modules and the Web Crypto API (for the cryptography demonstration).
+- A modern browser with JavaScript ES module support.
+- The Web Crypto API for the supported cryptography demonstrations.
 - Python 3 or another local static HTTP server.
-- A Firebase project with Authentication and Cloud Firestore configured.
+- A Firebase project with Authentication and Cloud Firestore configured for account-based features.
 
 ## Run locally
 
-From the repository root, start a static server:
+1. Clone the repository and open a terminal in the project root.
+2. Start a local static server:
 
-```bash
-python3 -m http.server 8000
-```
+   ```bash
+   python3 -m http.server 8000
+   ```
 
-Then open <http://localhost:8000/> in your browser.
+3. Open [http://localhost:8000](http://localhost:8000).
 
-You can also use a static server such as VS Code Live Server or `npx serve`.
+You can also use VS Code Live Server or `npx serve`.
 
 **Do not open `index.html` directly with `file://`.** The application uses JavaScript ES modules, which browsers generally block when loaded from a local file URL.
 
-## Firebase Authentication setup
+## Firebase setup
 
-The sign-in and account features use Firebase Authentication from the browser.
+### 1. Configure Authentication
 
 1. Create or select a project in the [Firebase console](https://console.firebase.google.com/).
-2. Register a Web app in the Firebase project and copy its web-app configuration.
+2. Register a Firebase Web app and copy its web-app configuration.
 3. In **Authentication → Sign-in method**, enable **Email/Password**.
-4. In **Authentication → Settings → Authorized domains**, add the local and deployed hostnames you use. Do not include URL paths.
-5. Update the configuration in `js/auth/firebase-client.js` to match the Firebase Web app.
-6. Run the app through a local HTTP server and test sign-up, sign-in, email verification, password reset, password change, and sign-out.
+4. In **Authentication → Settings → Authorized domains**, add the hostnames used for local and deployed versions. Do not include URL paths.
+5. Update the configuration in `js/auth/firebase-client.js`.
+6. Run the site over HTTP(S) and test sign-up, email verification, sign-in, password reset, password change, and sign-out.
 
-## Firebase Cloud Firestore progress setup
+### 2. Configure Cloud Firestore progress
 
-The application synchronizes each signed-in user's existing progress state to Firestore. It uses the path `users/{uid}/progress/overview`, where `{uid}` is the Firebase Authentication UID. The app reads the cloud document before showing the learning interface, merges it with that user's local cache, and debounces subsequent writes. Progress remains cached locally if a cloud request fails; a cloud read must succeed before this client uploads a merged snapshot.
+The application stores each signed-in user's progress at:
 
-1. In the [Firebase console](https://console.firebase.google.com/), open **Build → Firestore Database** and create a database if one does not already exist.
-2. Open the **Rules** tab and publish rules that restrict reads and writes to the signed-in user’s own UID path. For example:
+```text
+users/{uid}/progress/overview
+```
 
-   ```javascript
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /users/{userId}/{document=**} {
-         allow read, write: if request.auth != null
-                            && request.auth.uid == userId;
-       }
-     }
-   }
-   ```
+In the Firebase console, create a Cloud Firestore database and publish rules that restrict access to the authenticated user's own UID path. For example:
 
-3. Confirm the project's Firebase web configuration in `js/auth/firebase-client.js` and deploy the site over HTTP(S).
-4. Sign in with a verified account, visit a few modules, complete a quiz, and wait briefly for the debounced cloud write.
-5. In Firestore's **Data** tab, confirm that a document appears at `users/{your-auth-uid}/progress/overview`.
-6. Sign in with that same account on another browser/device and verify that the visited screens, achievements, statistics, and last visited screen are restored. Then sign out and sign in as a different account to verify the progress is isolated.
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+  }
+}
+```
 
-**Existing local progress note:** progress in the old `dcl.v2` global localStorage key has no Firebase UID attached, so it is not automatically assigned to a signed-in account. This conservative choice prevents one person's old browser cache from being uploaded to another person's account. The old key is left intact; the new account-specific cache uses `dcl.v2.user.{uid}`.
+Then:
 
-**Security note:** these rules verify document ownership but do not validate the correctness of client-submitted fields or quiz scores. Any score stored directly from a browser can be modified by that browser's owner. Add stricter field/type/size validation in Firestore rules, and use trusted server-side validation if quiz results must be tamper-resistant. Never place service-account private keys or Admin SDK credentials in browser code.
+1. Confirm the Firebase web configuration in `js/auth/firebase-client.js`.
+2. Deploy the site over HTTP(S).
+3. Sign in with a verified account, visit modules, complete a quiz, and allow time for the debounced cloud write.
+4. In Firestore's **Data** tab, confirm that `users/{your-auth-uid}/progress/overview` exists.
+5. Sign in with the same account on another browser/device and verify that progress is restored. Test a different account to confirm progress remains isolated.
 
-### Firebase configuration and security
+**Existing local progress:** the legacy `dcl.v2` localStorage key is not automatically assigned to a signed-in account because it has no Firebase UID. The account-specific cache uses `dcl.v2.user.{uid}`.
 
-Firebase web configuration, including the API key, is delivered to the browser and **is not a server-side secret**. Do not put service-account private keys, Admin SDK credentials, private tokens, or other server secrets in client code or commit them to Git.
-
-Protect the Firebase project by reviewing API-key restrictions where applicable, configuring Firebase Authentication and any enabled services correctly, and applying appropriate security rules to Firebase products such as Firestore or Storage if they are added. An API key being visible does not by itself grant access to protected user data; access controls and rules must be configured correctly. If a key has been abused or exposed beyond its intended use, review Google Cloud/Firebase guidance and rotate or restrict it as appropriate.
+**Security:** Firebase web configuration is delivered to the browser and is not a server-side secret. Never place service-account private keys, Admin SDK credentials, or other server secrets in client code or commit them to Git. Firebase Security Rules should enforce access control. The example rules above enforce per-user ownership but do not validate the correctness of client-submitted scores or other fields; use stricter validation or trusted server-side checks if data must be tamper-resistant.
 
 ## Project structure
 
 ```text
 .
-├── index.html                  Main page, authentication UI, and app shell
-├── favicon.png                 BitSecure favicon
+├── index.html
+├── favicon.png
 ├── css/
-│   ├── tokens.css              Design tokens and themes
-│   ├── base.css                Resets and base styles
-│   ├── layout.css              App shell, sidebar, top bar, page layout
-│   ├── components.css          Shared buttons, inputs, tables, tabs, and toasts
-│   ├── dashboard.css           Dashboard
-│   ├── lab.css                 Core-lab stages
-│   ├── modules.css              Shared learning-module visuals
-│   ├── learning.css            Tutorials and quiz styles
-│   ├── responsive.css           Responsive layout and motion preferences
-│   ├── login.css               Sign-in/sign-up styles
-│   └── profile.css             User profile and password dialog styles
+│   ├── tokens.css
+│   ├── base.css
+│   ├── layout.css
+│   ├── components.css
+│   ├── dashboard.css
+│   ├── lab.css
+│   ├── modules.css
+│   ├── learning.css
+│   ├── responsive.css
+│   ├── login.css
+│   ├── profile.css
+│   └── module-specific stylesheets
 └── js/
-    ├── app.js                  Application entry point; imports modules and boots UI
-    ├── auth/
-    │   ├── firebase-client.js  Firebase app, Auth, and Firestore initialization
-    │   └── login.js            Sign-in, sign-up, reset, verification, profile, and sign-out flows
-    ├── core/                   Shared state, storage, encoding, checksums, addressing, UI helpers
-    ├── simulations/            Protocol and network simulation logic
-    ├── app/                    Routing, navigation, dashboard, progress, notifications, theme
-    ├── lab/                    Core-lab UI and transmission stages
+    ├── app.js                 Application entry point and module imports
+    ├── auth/                  Firebase client and account flows
+    ├── core/                  Shared state, storage, encoding, and UI helpers
+    ├── simulations/           Protocol, error-control, and network models
+    ├── app/                   Navigation, routing, search, progress, and theme
+    ├── lab/                   End-to-end transmission lab
     └── modules/
-        ├── registry.js         Learning-module registry and groups
-        ├── link-layer/         Framing, error detection, ARQ
-        ├── network-layer/      Subnets, IP headers, routing
-        ├── transport-layer/    TCP/UDP, handshake, congestion, sockets
-        ├── application-layer/  DNS and HTTP/TLS
-        ├── advanced/           Encapsulation, packet capture, troubleshooting
-        └── learning/            Journey, tutorials, challenges, glossary
+        ├── registry.js
+        ├── link-layer/
+        ├── network-layer/
+        ├── transport-layer/
+        ├── application-layer/
+        ├── advanced/
+        └── learning/
+```
 
-## How the app is organised
+## How the application is organised
 
-- `index.html` loads `js/app.js` as an ES module.
-- `js/app.js` imports each learning module. Each module registers itself through `regMod()` in `js/modules/registry.js`.
-- The router displays a module based on the URL hash (for example, `#/m/http`).
-- UI modules live in `js/modules/`; protocol calculations and simulated server logic live in `js/simulations/`; shared helpers live in `js/core/`.
-- After authentication, each user's progress is cached in a UID-specific localStorage entry and synchronized with Firestore at `users/{uid}/progress/overview`. The legacy `dcl.v2` key is not automatically assigned to an account because it is not associated with a user ID.
-- The desktop sidebar collapsed state is stored separately in `localStorage` as `bitsecure-sidebar-collapsed`.
+- `index.html` loads `js/app.js` as a JavaScript ES module.
+- `js/app.js` imports the learning modules. Each module registers itself through `regMod()` in `js/modules/registry.js`.
+- The registry groups modules into the learning path and the router displays the selected module using the URL hash (for example, `#/m/http`).
+- Module interfaces live in `js/modules/`; protocol and network models live in `js/simulations/`; shared helpers live in `js/core/`.
+- The core transmission workflow is initialized from `js/lab/`.
+- Account and cloud-progress functionality lives in `js/auth/` and the progress helpers in `js/app/`.
 
 ### Add a learning module
 
 1. Create a file under the appropriate `js/modules/<area>/` directory.
-2. Import `regMod` from `../registry.js` and register a module object with an `id`, `group`, `title`, `desc`, `obj`, and `mount(root)`.
-3. Import the new module file in `js/app.js`. The import makes the module register at startup.
-4. Test navigation into and out of the module. If it creates timers or external event listeners, return a cleanup function from `mount()`.
+2. Import `regMod` from `../registry.js` and register a module with an `id`, `group`, `title`, `desc`, and `mount(root)`.
+3. Import the new module file in `js/app.js` so it registers at startup.
+4. Test navigation into and out of the module. If it creates timers or external event listeners, return a cleanup function from `mount(root)`.
 
-### Where to make changes
+### Common change locations
 
 | Task | Location |
 | --- | --- |
 | Change a module's UI or interactions | `js/modules/<area>/<module>.js` |
-| Change protocol/simulation logic | `js/simulations/<topic>.js` |
-| Change Wi-Fi simulator UI | `js/modules/network-layer/wifi-simulator.js` and `css/wifi-simulator.css` |
-| Change Wi-Fi signal/interference model | `js/simulations/wifi-simulation.js` |
-| Change Wi-Fi simulator UI | `js/modules/network-layer/wifi-simulator.js` and `css/wifi-simulator.css` |
-| Change Wi-Fi signal/interference model | `js/simulations/wifi-simulation.js` |
+| Change protocol or simulation logic | `js/simulations/<topic>.js` |
+| Change the core transmission workflow | `js/lab/` and related simulation files |
 | Change module groups or ordering | `js/modules/registry.js` and imports in `js/app.js` |
 | Change colours, typography, or theme tokens | `css/tokens.css` |
 | Change shared controls and component styles | `css/components.css` |
-| Change the sign-in/account flow | `js/auth/login.js` |
+| Change sign-in and account flows | `js/auth/login.js` |
 | Change Firebase initialization | `js/auth/firebase-client.js` |
 | Change account/login presentation | `index.html`, `css/login.css`, and `css/profile.css` |
-| Change quiz questions, tutorials, or glossary | `js/modules/learning/challenges.js`, `tutorials.js`, or `glossary.js` |
+| Change tutorials, quizzes, or glossary | `js/modules/learning/` |
 
 ## Troubleshooting
 
@@ -160,43 +201,49 @@ Protect the Firebase project by reviewing API-key restrictions where applicable,
 | --- | --- |
 | Blank page or CORS/module errors | Start a local HTTP server; do not use `file://`. |
 | A JavaScript file returns 404 | Check import paths and file names; relative imports must point to the correct `.js` file. |
-| “does not provide an export named …” | Confirm the export exists and the import name/path matches. |
+| “does not provide an export named …” | Confirm that the export exists and the import name/path matches. |
 | Sign-in says the domain is unauthorized | Add the hostname in Firebase Authentication → Settings → Authorized domains. |
 | Email/password sign-in is unavailable | Enable Email/Password in Firebase Authentication → Sign-in method. |
 | Authentication configuration error | Check `js/auth/firebase-client.js` against the Firebase Web app configuration. |
-| Firestore `permission-denied` | Verify that the user is signed in and your rules allow access only when `request.auth.uid == userId` for their UID path. |
-| Progress differs between devices | Confirm both devices use the same Firebase project and account, then inspect the document at `users/{uid}/progress/overview`. |
-| Old progress appears during testing | Check the account-specific `dcl.v2.user.{uid}` cache and the Firestore document. The legacy global cache is intentionally not auto-imported. |
+| Firestore `permission-denied` | Verify that the user is signed in and the rules allow access only to that user's UID path. |
+| Progress differs between devices | Confirm both devices use the same Firebase project and account, then inspect `users/{uid}/progress/overview`. |
+| Old progress appears during testing | Check the account-specific `dcl.v2.user.{uid}` cache and the Firestore document. The legacy global cache is not automatically imported. |
+| Cryptography features are unavailable | Use HTTPS or localhost and a browser that supports the Web Crypto API. |
 | CSS changes do not appear | Hard-refresh the page to bypass cached stylesheets. |
 
 ## Manual smoke-test checklist
 
-Before publishing a change, test the following in a browser:
+Before publishing a change, test the affected feature and the main application flow:
 
 1. Start the local server and confirm the page loads without console errors.
-2. Visit every sidebar module and use browser Back/Forward navigation.
-3. In the core lab, try ordinary text, an emoji, packet-size changes, different simulated loss levels, and stopping a transmission mid-run.
-4. Exercise the relevant learning modules, including DNS, HTTP methods, TLS, TCP/UDP, and subnetting.
-5. In the Wi-Fi simulator, add/remove access points and clients, edit SSID/band/channel/power, drag devices, add/remove obstacles, and check signal/interference updates. Confirm wired endpoints are labeled separately and saved layouts restore.
-5. In the Wi-Fi simulator, add/remove access points and clients, edit SSID/band/channel/power, drag devices, add/remove obstacles, and check signal/interference updates. Confirm wired endpoints are labeled separately and saved layouts restore.
-6. Switch the theme and reload; confirm it persists.
-7. Collapse and restore the desktop sidebar; check the mobile navigation at a narrow viewport.
-8. Sign in and confirm Firestore progress is loaded before the dashboard opens.
-9. Visit modules and finish a quiz; verify progress syncs to Firestore and restores on another device.
-10. Sign out, sign in as a different user, and confirm the first user's progress is not shown or uploaded to the second account.
-11. Test offline mode; local changes should remain cached and a failed cloud read must not trigger a blind overwrite.
+2. Visit each sidebar group and test browser Back/Forward navigation.
+3. In the core lab, try text and each supported file type, packet-size changes, packet loss, corruption, retries, and stopping a transmission.
+4. In Error Detection & Correction, test detection methods and the Hamming, two-dimensional parity, and Reed–Solomon correction examples.
+5. Exercise TCP/UDP, handshake, congestion control, sockets, subnetting, routing, DNS, HTTP/TLS, and encryption demonstrations.
+6. In the topology and Wi-Fi simulators, add, edit, and remove elements and verify that the displayed results update.
+7. In the firewall lab, add and reorder rules, test packets, and compare policy results.
+8. Switch the theme, reload, and confirm that it persists. Collapse and restore the desktop sidebar and check mobile navigation.
+9. Sign in and confirm Firestore progress loads before the learning interface opens.
+10. Visit modules and finish a quiz; verify progress syncs and restores on another device.
+11. Sign out, sign in as a different user, and confirm the first user's progress is not shown or uploaded to the second account.
+12. Test offline behaviour; local changes should remain cached, and a failed cloud read must not trigger a blind overwrite.
 
-**Wi-Fi model limitation:** the wireless simulator runs entirely in the browser. Signal strength and interference are simplified normalized scores, not dBm measurements, live scans, or predictions of actual throughput. Obstacle penalties and channel overlap are educational approximations; security options are labels only and do not perform Wi-Fi encryption.
+## Simulation limitations
+
+- The Network Performance Analyzer uses a simplified, seeded model. Its outputs are estimates from the selected parameters; it does not measure the live internet connection or transmit real packets.
+- The Wi-Fi simulator uses simplified signal and interference scores. These are educational approximations, not dBm measurements, live scans, or predictions of actual throughput. Security options are labels in the simulation and do not configure or encrypt a real wireless network.
+- The firewall lab evaluates sample packets against an in-browser stateless rule set. It does not modify the device or network firewall and does not track real connections.
+- The HTTP, DNS, routing, and other network scenarios are educational models, not real remote services.
 
 ## Contributing
 
-Keep protocol logic separate from DOM rendering where practical, use the existing shared helpers and design tokens, and avoid adding duplicate copies of shared state. Keep changes focused and test the affected module plus navigation before committing.
+Keep protocol logic separate from DOM rendering where practical, reuse shared helpers and design tokens, and avoid duplicating shared state. Keep changes focused and test the affected module as well as navigation before committing.
 
 ## Glossary
 
-- **ES module:** a JavaScript file that shares functionality through `import` and `export`.
-- **DOM:** the browser's live document tree.
-- **Event delegation:** handling events from child elements through a listener on a stable parent.
-- **Hash routing:** using the URL fragment (the part after `#`) to select a screen without a full page reload.
-- **TLS:** Transport Layer Security, the protocol used to protect data in transit.
-- **ARQ:** Automatic Repeat reQuest, a family of error-control techniques that use acknowledgements and retransmissions.
+- **ARQ:** Automatic Repeat reQuest; error-control techniques that use acknowledgements and retransmissions.
+- **CRC:** Cyclic Redundancy Check; an error-detection technique based on polynomial division.
+- **DOM:** Document Object Model; the browser's representation of a page.
+- **ES module:** A JavaScript file that shares functionality through `import` and `export`.
+- **Hash routing:** Using the URL fragment (the part after `#`) to select a screen without a full page reload.
+- **TLS:** Transport Layer Security; a protocol for protecting data in transit.
