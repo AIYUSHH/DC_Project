@@ -7,7 +7,7 @@
 
 export const ZONES = [
   { id: 'link', name: 'Link', e: '🔗', l: '#bfe3ff', d: '#2f8cff', blurb: 'Frames, errors and reliable delivery' },
-  { id: 'network', name: 'Network', e: '🌐', l: '#ffd1e1', d: '#ec4f9c', blurb: 'Addresses, headers and routes' },
+  { id: 'network', name: 'Network', e: '🌐', l: '#ffd1e1', d: '#ec4f9c', blurb: 'Interfaces, addresses, neighbours and routes' },
   { id: 'transport', name: 'Transport', e: '🚚', l: '#d4f5cf', d: '#21b573', blurb: 'TCP, UDP, ports and congestion' },
   { id: 'application', name: 'Application', e: '💬', l: '#ffe0c2', d: '#f2a30a', blurb: 'DNS, HTTP and TLS' },
   { id: 'security', name: 'Security', e: '🛡️', l: '#e3dcff', d: '#8a5cff', blurb: 'Encryption, firewalls, captures' },
@@ -41,6 +41,9 @@ export const META = {
   'topology-builder': { z: 'network', d: 'Easy', e: '🧩',
     w: { n: ['🖥️|PC', '🔀|Switch', '🛜|Router'], s: [[1, '📦', 'Devices connect to a switch to form a LAN.'], [2, '📦', 'A router joins different networks together.'], [2, '🌐', 'Routers link your LAN to the wider internet.']] },
     q: ['Which device connects devices in one LAN?|Switch|Printer|Monitor', 'Which device connects different networks?|Router|Keyboard|Speaker', 'In a star topology, devices connect to…|A central switch|Each other in a ring|One long cable', 'A drawback of a star topology is…|The centre is a single point of failure|Too many cables|It cannot grow', 'Which topology gives the most redundancy?|Full mesh|Bus|Star'] },
+  'live-network-inventory': { z: 'network', d: 'Medium', e: '🛰️',
+    w: { n: ['💻|Your device', '🔀|Local network', '🌐|Gateway'], s: [[1, 'IP + MAC', 'Your operating system exposes addresses assigned to local interfaces.'], [2, 'Neighbour cache', 'The OS remembers link-layer addresses it has recently resolved.'], [2, 'Default route', 'The routing table identifies the next hop for traffic leaving the local subnet.']] },
+    q: ['What does a default route identify?|The next hop used when no more specific route matches|Every device on the internet|The DNS server only', 'An ARP or neighbour-cache entry represents…|A recently resolved IP-to-link-layer address mapping|A complete physical network map|A list of every online host', 'Which command commonly displays Linux interface addresses?|ip addr|mkdir|chmod', 'Can a normal client always read signal strength for every Wi-Fi device?|No, it usually sees only its own connection|Yes, for every nearby client|Only through DNS', 'Does reading the local neighbour cache actively scan the network?|No, it reads entries already held by the OS|Yes, it sends a ping to every IP|Yes, it opens every port'] },
   'wifi-simulator': { z: 'network', d: 'Medium', e: '📶',
     w: { n: ['📱|Client', '📶|Access point', '🌐|Internet'], s: [[1, 'SSID?', 'The client scans for networks by SSID.'], [1, 'Join', 'It connects to the access point on one channel.'], [2, '📦', 'Traffic then flows on to the wired network.']] },
     q: ['What is an SSID?|The name of a Wi-Fi network|A password|A cable type', 'As you move away from the access point the signal…|Gets weaker|Gets stronger|Stays the same', 'Which 2.4 GHz channels do not overlap?|1, 6 and 11|1, 2 and 3|5, 6 and 7', 'Which band usually reaches farther?|2.4 GHz|5 GHz|They are equal', 'Why do nearby APs on one channel slow each other?|They share airtime and interfere|They use different cables|They encrypt twice'] },
