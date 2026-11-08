@@ -80,9 +80,26 @@ regMod({
             <button class="btn ghost sm" type="button" id="lni-public-ip-check">Check public IP</button>
           </div>
           <div class="lni-browser-actions">
-            <button class="btn sm" type="button" id="lni-connect-agent">Connect for detailed device inventory</button>
+            <button class="btn sm" type="button" id="lni-connect-agent">Get full network inventory</button>
             <span>No installation is needed to use browser mode.</span>
           </div>
+        </section>
+        <section class="lni-agent-modal-backdrop" id="lni-agent-modal" hidden>
+          <section class="lni-agent-modal" role="dialog" aria-modal="true" aria-labelledby="lni-agent-modal-title">
+            <button class="lni-agent-close" type="button" id="lni-agent-close" aria-label="Close">×</button>
+            <div class="lni-kicker">OPTIONAL · FULL DEVICE INVENTORY</div>
+            <h2 id="lni-agent-modal-title">Connect your actual network</h2>
+            <p class="lni-agent-intro">To inspect private IPs, adapters, gateways, routes and cached neighbours, run BitSecure’s read-only helper on this computer. Nothing runs until you download and start it.</p>
+            <div class="lni-agent-os-row"><label for="lni-agent-os">Your operating system</label><select id="lni-agent-os"><option value="linux">Linux</option><option value="windows">Windows</option><option value="other">Other / not sure</option></select></div>
+            <ol class="lni-agent-steps-list">
+              <li><b>Download the helper</b><p>Save the small Python script from the BitSecure repository.</p><a class="btn ghost sm" href="https://raw.githubusercontent.com/AIYUSHH/DC_Project/feature/add-somya-developer/tools/network-agent/network_agent.py" target="_blank" rel="noopener">Download network_agent.py</a></li>
+              <li><b>Open a terminal in the download folder</b><p>On Windows, open PowerShell. On Linux, open Terminal. Change to the folder where the file was saved.</p></li>
+              <li><b>Run this command</b><div class="lni-command"><code id="lni-agent-command">python3 network_agent.py</code><button type="button" id="lni-agent-copy">Copy</button></div><small id="lni-agent-python-note">Requires Python 3.9 or newer. If Python is missing, install it first.</small></li>
+              <li><b>Return here and connect</b><p>Keep the terminal window open while using the inventory.</p><button class="btn sm" type="button" id="lni-agent-connect">I started it — connect now</button></li>
+            </ol>
+            <div class="lni-agent-security"><b>Privacy and safety</b><span>The helper listens only on this computer (127.0.0.1), reads existing OS network tables, and does not scan the LAN or change settings. The neighbour cache is not a complete topology.</span></div>
+            <p class="lni-agent-python-links">Need Python? <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">Get Python from python.org</a>. Browser mode and the learning demo remain available without it.</p>
+          </section>
         </section>
         <section class="lni-welcome" id="lni-welcome" hidden>
           <div class="lni-welcome-icon">⌘</div><div>
@@ -201,7 +218,19 @@ regMod({
       const copy=event.target.closest('[data-copy]');if(copy)copyValue(copy.dataset.copy,copy);
     });
     el('#lni-refresh').addEventListener('click',refresh);
-    el('#lni-connect-agent').addEventListener('click',showConsent);
+    const agentModal=el('#lni-agent-modal');
+    const agentOS=el('#lni-agent-os');
+    const updateAgentCommand=()=>{const os=agentOS.value;el('#lni-agent-command').textContent=os==='windows'?'py network_agent.py':os==='linux'?'python3 network_agent.py':'python network_agent.py';el('#lni-agent-python-note').textContent=os==='windows'?'Requires Python 3.9+. If the py command is unavailable, install Python and enable the Python launcher.':'Requires Python 3.9 or newer. If Python is missing, install it first.';};
+    const openAgentModal=()=>{agentModal.hidden=false;updateAgentCommand();agentOS.focus();};
+    const closeAgentModal=()=>{agentModal.hidden=true;};
+    const detectOS=()=>{const ua=navigator.userAgent||'';agentOS.value=/Windows/i.test(ua)?'windows':/Linux|Android/i.test(ua)?'linux':'other';updateAgentCommand();};
+    el('#lni-connect-agent').addEventListener('click',openAgentModal);
+    el('#lni-agent-close').addEventListener('click',closeAgentModal);
+    agentModal.addEventListener('click',e=>{if(e.target===agentModal)closeAgentModal();});
+    agentOS.addEventListener('change',updateAgentCommand);
+    el('#lni-agent-copy').addEventListener('click',e=>copyValue(el('#lni-agent-command').textContent,e.currentTarget));
+    el('#lni-agent-connect').addEventListener('click',()=>{closeAgentModal();el('#lni-refresh').hidden=false;refresh();});
+    detectOS();
     el('#lni-public-ip-check').addEventListener('click',checkPublicIp);
     window.addEventListener('online',renderBrowserStatus);
     window.addEventListener('offline',renderBrowserStatus);
