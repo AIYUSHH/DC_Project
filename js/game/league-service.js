@@ -29,6 +29,19 @@ export async function ensureLeagueMembership() {
   const pRef = profileRef(user.uid);
   const newBatchRef = doc(batchesRef(currentWeek));
 
+  // Once UTC weekId changes, the previous batch is frozen: compute this learner's final
+  // rank from its member documents before entering the membership transaction.
+  let previousRank = 0;
+  const previousProfile = await getDoc(pRef);
+  if (previousProfile.exists()) {
+    const old = previousProfile.data();
+    if (old.weekId && old.weekId !== currentWeek && old.batchId) {
+      const oldMembers = await getDocs(query(membersRef(old.weekId, old.batchId), orderBy('weeklyXp', 'desc'), limit(LEAGUE_SIZE)));
+      const ranked = rankMembers(Object.fromEntries(oldMembers.docs.map(item => [item.id, item.data()])));
+      previousRank = ranked.find(item => item.uid === user.uid)?.rank || 0;
+    }
+  }
+
   // Find a candidate outside the transaction, then re-read it inside the transaction to handle
   // concurrent joins safely. Member scores live in separate per-user documents.
   await runTransaction(db, async tx => {
@@ -37,19 +50,12 @@ export async function ensureLeagueMembership() {
     if (profile.weekId === currentWeek && profile.batchId) return;
 
     let tier = profile.tier || 'bronze';
-    if (profile.weekId && profile.batchId) {
-      const oldBatch = await tx.get(batchRef(profile.weekId, profile.batchId));
-      const oldMember = await tx.get(memberRef(profile.weekId, profile.batchId, user.uid));
-      if (oldBatch.exists() && oldMember.exists()) {
-        const oldRank = Number(oldMember.data().finalRank) || 0;
-        // A final rank is written at week close by the trusted settlement job. If it is not
-        // available, keep the learner in the same tier rather than guessing from partial data.
-        if (oldRank) tier = nextLeague(tier, oldRank, LEAGUE_SIZE);
-        if (oldRank > 0 && oldRank <= 5) {
-          const decorations = Array.isArray(profile.decorations) ? profile.decorations : [];
-          const reward = `weekly-top5-${tier}`;
-          if (!decorations.includes(reward)) profile.decorations = [...decorations, reward];
-        }
+    if (profile.weekId && profile.weekId !== currentWeek && previousRank) {
+      tier = nextLeague(tier, previousRank, LEAGUE_SIZE);
+      if (previousRank <= 5) {
+        const decorations = Array.isArray(profile.decorations) ? profile.decorations : [];
+        const reward = `weekly-top5-${tier}`;
+        if (!decorations.includes(reward)) profile.decorations = [...decorations, reward];
       }
     }
 
