@@ -87,6 +87,9 @@ export function route() {
     if (i === 1) labSplit();
     if (i === 2) labPrepare();
     if (i === 3) labRecv();
+  } else if (kind === 'about' || kind === 'support') {
+    currentKey = kind;
+    renderInfoPage(kind);
   } else if (kind === 'm' && modById(arg)) {
     const m = modById(arg);
     currentKey = m.id;
@@ -99,10 +102,13 @@ export function route() {
     renderDash();
   }
   // Remember the first visit time (an existing value is kept).
-  P.visited[currentKey] = P.visited[currentKey] || Date.now();
-  if (currentKey !== 'dash') P.last = currentKey;
-  checkAch();
-  save();
+  const isInfoPage = currentKey === 'about' || currentKey === 'support';
+  if (!isInfoPage) {
+    P.visited[currentKey] = P.visited[currentKey] || Date.now();
+    if (currentKey !== 'dash') P.last = currentKey;
+    checkAch();
+    save();
+  }
   refreshNav(currentKey);
   window.scrollTo(0, 0);
   document.body.classList.remove('nav-open');
@@ -134,5 +140,60 @@ function renderModule(m) {
   } catch (e) {
     console.error(e);
     $('#mbody').innerHTML = vd('bad', 'This module failed to load.', esc(e.message));
+  }
+}
+
+
+/** Render the public-facing About and Support pages without affecting learning progress. */
+function renderInfoPage(page) {
+  const root = $('#info-page');
+  setStage('info-page');
+  if (page === 'about') {
+    crumbs(['About BitSecure']);
+    document.title = 'About Us · BitSecure';
+    root.innerHTML = `
+      <div class="info-hero about-hero">
+        <span class="info-kicker">ABOUT BITSECURE</span>
+        <h1>Learning by doing.<br><span>Understanding by simulating.</span></h1>
+        <p>BitSecure is an interactive learning platform that turns complex technical concepts into practical, visual experiences. Instead of only reading how systems work, learners can experiment, observe what happens, and build a deeper understanding.</p>
+        <a class="btn" href="#/">Explore the lab <span aria-hidden="true">→</span></a>
+      </div>
+      <section class="info-section">
+        <div class="info-section-heading"><span class="info-kicker">OUR PURPOSE</span><h2>Make learning interactive</h2></div>
+        <div class="info-feature-grid">
+          <article class="info-card"><span class="info-icon" aria-hidden="true">◎</span><h3>Learn through experience</h3><p>Explore concepts with hands-on simulations, visual explanations, and guided experiments.</p></article>
+          <article class="info-card"><span class="info-icon" aria-hidden="true">⌁</span><h3>See what happens behind the scenes</h3><p>Break complex processes into understandable stages and follow how each part works.</p></article>
+          <article class="info-card"><span class="info-icon" aria-hidden="true">↗</span><h3>Build confidence</h3><p>Practice, test ideas, make mistakes safely, and learn at your own pace.</p></article>
+        </div>
+      </section>
+      <section class="info-section future-section">
+        <div class="info-section-heading"><span class="info-kicker">THE BIGGER VISION</span><h2>One platform. Simulations for many courses.</h2></div>
+        <p class="info-section-lead">BitSecure begins with Data Communications, but our ambition goes much further. We want to build interactive simulation experiences for a wide range of academic courses and disciplines, helping students understand difficult ideas by seeing and experimenting with them.</p>
+        <div class="discipline-list"><span>Computer Science</span><span>Electronics</span><span>Mathematics</span><span>Physics</span><span>Engineering</span><span>More disciplines to come</span></div>
+        <p class="info-muted">Our long-term goal is to make practical, visual learning tools more accessible to students and educators across different fields.</p>
+      </section>
+      <section class="info-section team-section">
+        <div class="info-section-heading"><span class="info-kicker">THE PEOPLE BEHIND THE PROJECT</span><h2>Meet the developers</h2><p>Built with curiosity, collaboration, and a shared interest in making technical education easier to explore.</p></div>
+        <div class="developer-grid">
+          <article class="developer-card"><div class="developer-avatar" aria-hidden="true">SP</div><h3>Sahil Patra</h3><p>Developer</p><a href="https://github.com/sahilvxky25" target="_blank" rel="noopener noreferrer">GitHub · @sahilvxky25 ↗</a></article>
+          <article class="developer-card"><div class="developer-avatar" aria-hidden="true">AA</div><h3>Aiyush Anand</h3><p>Developer</p><a href="https://github.com/AIYUSHH" target="_blank" rel="noopener noreferrer">GitHub · @AIYUSHH ↗</a></article>
+        </div>
+      </section>
+      <section class="info-cta"><div><span class="info-kicker">KEEP EXPLORING</span><h2>Curiosity is where understanding begins.</h2><p>Try the lab and explore how data moves through a network.</p></div><div class="info-cta-actions"><a class="btn" href="#/">Open BitSecure <span aria-hidden="true">→</span></a><a class="btn ghost" href="https://github.com/sahilvxky25/DC_Project" target="_blank" rel="noopener noreferrer">View GitHub Repository ↗</a></div></section>`;
+  } else {
+    crumbs(['Support BitSecure']);
+    document.title = 'Support Us · BitSecure';
+    root.innerHTML = `
+      <div class="info-hero support-hero">
+        <span class="info-kicker">SUPPORT THE MISSION</span>
+        <h1>Help us make learning<br><span>more hands-on for everyone.</span></h1>
+        <p>We want to expand BitSecure beyond Data Communications and create useful, interactive simulations for students across many courses. Your encouragement can help us keep building.</p>
+      </div>
+      <section class="info-section support-content">
+        <div class="support-message"><span class="info-icon" aria-hidden="true">♡</span><h2>Why your support matters</h2><p>Support can help us dedicate more time to developing new course simulations, improving existing experiences, creating clearer animations and visual explanations, and keeping educational tools accessible to learners.</p></div>
+        <div class="support-list"><div><b>01</b><span><strong>More course simulations</strong><small>Bring interactive learning to new subjects and disciplines.</small></span></div><div><b>02</b><span><strong>Better learning experiences</strong><small>Improve usability, animations, accessibility, and explanations.</small></span></div><div><b>03</b><span><strong>Accessible education</strong><small>Keep building practical resources that learners can explore at their own pace.</small></span></div></div>
+      </section>
+      <section class="support-coming-soon"><span class="coming-soon-pill">COMING SOON</span><h2>Support us on Patreon</h2><p>We are preparing our Patreon page. Once it is live, this page will include a link for anyone who wants to support the project.</p><button class="btn" type="button" disabled aria-disabled="true">Patreon page coming soon</button><p class="info-muted">There is no payment link available yet. Please check back later.</p></section>
+      <div class="info-back-link"><a href="#/about">Learn more about our mission →</a><p><a href="https://github.com/sahilvxky25/DC_Project" target="_blank" rel="noopener noreferrer">Explore the project on GitHub ↗</a></p></div>`;
   }
 }

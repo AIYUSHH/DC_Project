@@ -40,6 +40,9 @@ export function buildNav() {
     });
     h += '</div></details>';
   });
+  h += `<div class="nav-h nav-community-heading">${icon('learn')}<span>About BitSecure</span></div>`;
+  h += `<a class="nav-link" href="#/about" data-r="about">${icon('learn')}<span>About Us</span></a>`;
+  h += `<a class="nav-link" href="#/support" data-r="support">${icon('trophy')}<span>Support Us</span></a>`;
   $('#nav').innerHTML = h;
 }
 
