@@ -73,7 +73,42 @@ leagueWeeks/{weekId}/batches/{batchId}
 leagueWeeks/{weekId}/batches/{batchId}/members/{uid}
 ```
 
-The batch stores its tier and member count; each learner's score is in their own member document. This keeps one learner from directly editing another learner's member document when rules are configured accordingly. The query index for batch allocation is in `firestore.indexes.json`; deploy it with the Firebase CLI:
+The batch stores its tier and member count; each learner's score is in their own member document. This keeps one learner from directly editing another learner's member document when rules are configured accordingly.
+
+For a **prototype-only test**, add the following match blocks inside your existing `service cloud.firestore { match /databases/{database}/documents { ... } }` rules. Keep your existing `users/{userId}` ownership rules:
+
+```javascript
+match /leagueWeeks/{weekId}/batches/{batchId} {
+  allow read: if request.auth != null;
+  allow create: if request.auth != null
+    && request.resource.data.tier in ['bronze', 'silver', 'gold', 'platinum', 'diamond']
+    && request.resource.data.memberCount == 1;
+  allow update: if request.auth != null
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount', 'updatedAt'])
+    && request.resource.data.memberCount == resource.data.memberCount + 1
+    && request.resource.data.memberCount <= 20;
+  allow delete: if false;
+
+  match /members/{uid} {
+    allow read: if request.auth != null;
+    allow create: if request.auth != null
+      && request.auth.uid == uid
+      && request.resource.data.weeklyXp == 0
+      && request.resource.data.eventIds.size() == 0;
+    allow update: if request.auth != null
+      && request.auth.uid == uid
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weeklyXp', 'eventIds', 'updatedAt'])
+      && request.resource.data.weeklyXp >= resource.data.weeklyXp
+      && request.resource.data.weeklyXp <= resource.data.weeklyXp + 100
+      && request.resource.data.eventIds.size() <= 100;
+    allow delete: if false;
+  }
+}
+```
+
+These rules restrict writes to each learner's own score document, but **do not make the score trustworthy**: a user can still award themselves repeated increments. Use them only for a closed prototype with no valuable rewards. Replace client score writes with a trusted server endpoint before opening the competition publicly.
+
+The query index for batch allocation is in `firestore.indexes.json`; deploy it with the Firebase CLI:
 
 ```bash
 firebase deploy --only firestore:indexes
