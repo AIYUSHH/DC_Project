@@ -1,19 +1,20 @@
 /** Shared weekly league batches stored in Firestore.
  *
- * Scores are client-submitted and therefore provisional. Before treating rankings or rewards as
- * tamper-resistant, route awardLeagueXp through a trusted Firebase/Azure function that validates
- * quiz attempts server-side. Never use these client writes as proof of achievement or entitlement.
+ * Scores are client-submitted and therefore provisional. Users can only write their own member
+ * document, not another learner's score. A trusted Firebase/Azure function is still required to
+ * validate quiz attempts and prevent a user awarding themselves arbitrary XP.
  */
-import { auth } from '../auth/firebase-client.js';
-import { db } from '../auth/firebase-client.js';
+import { auth, db } from '../auth/firebase-client.js';
 import {
-  collection, doc, getDoc, getDocs, limit, query, runTransaction, serverTimestamp, where
+  collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, where
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { LEAGUES, LEAGUE_SIZE, nextLeague, rankMembers, weekId } from './leagues.js';
 
 const profileRef = uid => doc(db, 'users', uid, 'league', 'profile');
 const batchesRef = week => collection(db, 'leagueWeeks', week, 'batches');
 const batchRef = (week, id) => doc(db, 'leagueWeeks', week, 'batches', id);
+const membersRef = (week, id) => collection(db, 'leagueWeeks', week, 'batches', id, 'members');
+const memberRef = (week, id, uid) => doc(db, 'leagueWeeks', week, 'batches', id, 'members', uid);
 const safeName = user => (user.displayName || user.email?.split('@')[0] || 'Learner').slice(0, 32);
 
 function requireUser() {
@@ -28,6 +29,8 @@ export async function ensureLeagueMembership() {
   const pRef = profileRef(user.uid);
   const newBatchRef = doc(batchesRef(currentWeek));
 
+  // Find a candidate outside the transaction, then re-read it inside the transaction to handle
+  // concurrent joins safely. Member scores live in separate per-user documents.
   await runTransaction(db, async tx => {
     const pSnap = await tx.get(pRef);
     const profile = pSnap.exists() ? pSnap.data() : {};
@@ -35,12 +38,13 @@ export async function ensureLeagueMembership() {
 
     let tier = profile.tier || 'bronze';
     if (profile.weekId && profile.batchId) {
-      const oldSnap = await tx.get(batchRef(profile.weekId, profile.batchId));
-      if (oldSnap.exists()) {
-        const oldMembers = oldSnap.data().members || {};
-        const ranked = rankMembers(oldMembers);
-        const oldRank = ranked.find(x => x.uid === user.uid)?.rank || 0;
-        if (oldRank) tier = nextLeague(tier, oldRank, ranked.length);
+      const oldBatch = await tx.get(batchRef(profile.weekId, profile.batchId));
+      const oldMember = await tx.get(memberRef(profile.weekId, profile.batchId, user.uid));
+      if (oldBatch.exists() && oldMember.exists()) {
+        const oldRank = Number(oldMember.data().finalRank) || 0;
+        // A final rank is written at week close by the trusted settlement job. If it is not
+        // available, keep the learner in the same tier rather than guessing from partial data.
+        if (oldRank) tier = nextLeague(tier, oldRank, LEAGUE_SIZE);
         if (oldRank > 0 && oldRank <= 5) {
           const decorations = Array.isArray(profile.decorations) ? profile.decorations : [];
           const reward = `weekly-top5-${tier}`;
@@ -49,23 +53,26 @@ export async function ensureLeagueMembership() {
       }
     }
 
-    // Query candidates before the transaction; the selected batch is re-read transactionally
-    // so concurrent joins retry rather than exceeding the 20-member cap.
     const openQuery = query(batchesRef(currentWeek), where('tier', '==', tier), where('memberCount', '<', LEAGUE_SIZE), limit(10));
     const openSnap = await getDocs(openQuery);
     const chosen = openSnap.docs.find(item => Number(item.data().memberCount) < LEAGUE_SIZE);
     const targetRef = chosen ? chosen.ref : newBatchRef;
     const targetSnap = chosen ? await tx.get(targetRef) : null;
-    const target = targetSnap?.exists() ? targetSnap.data() : { tier, memberCount: 0, members: {} };
-    const members = { ...(target.members || {}) };
-    if (!members[user.uid] && Object.keys(members).length >= LEAGUE_SIZE) throw new Error('This batch is full. Please retry.');
-    members[user.uid] = members[user.uid] || {
-      name: safeName(user), weeklyXp: 0, joinedAt: Date.now(), eventIds: []
-    };
+    const target = targetSnap?.exists() ? targetSnap.data() : { tier, memberCount: 0 };
+    const ownMemberRef = memberRef(currentWeek, targetRef.id, user.uid);
+    const ownMemberSnap = await tx.get(ownMemberRef);
+    if (!ownMemberSnap.exists() && Number(target.memberCount) >= LEAGUE_SIZE) {
+      throw new Error('This batch is full. Please retry.');
+    }
 
-    tx.set(targetRef, {
-      tier, memberCount: Object.keys(members).length, members, updatedAt: serverTimestamp()
-    }, { merge: true });
+    if (!ownMemberSnap.exists()) {
+      tx.set(ownMemberRef, {
+        name: safeName(user), weeklyXp: 0, joinedAt: Date.now(), eventIds: []
+      });
+      tx.set(targetRef, {
+        tier, memberCount: Number(target.memberCount) + 1, updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
     tx.set(pRef, {
       tier, weekId: currentWeek, batchId: targetRef.id,
       decorations: profile.decorations || [], updatedAt: serverTimestamp()
@@ -80,18 +87,18 @@ export async function awardLeagueXp(amount, eventId) {
   const points = Math.max(0, Math.min(100, Math.floor(Number(amount) || 0)));
   if (!points || !eventId) return false;
   const profile = await ensureLeagueMembership();
-  const ref = batchRef(profile.weekId, profile.batchId);
+  const ref = memberRef(profile.weekId, profile.batchId, user.uid);
   return runTransaction(db, async tx => {
     const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('Your weekly batch could not be found.');
-    const data = snap.data(), members = { ...(data.members || {}) };
-    const member = { ...(members[user.uid] || {}) };
+    if (!snap.exists()) throw new Error('Your league membership could not be found.');
+    const member = snap.data();
     const events = Array.isArray(member.eventIds) ? member.eventIds : [];
     if (events.includes(eventId)) return false;
-    member.weeklyXp = (Number(member.weeklyXp) || 0) + points;
-    member.eventIds = [...events.slice(-99), eventId];
-    members[user.uid] = member;
-    tx.update(ref, { members, updatedAt: serverTimestamp() });
+    tx.update(ref, {
+      weeklyXp: (Number(member.weeklyXp) || 0) + points,
+      eventIds: [...events.slice(-99), eventId],
+      updatedAt: serverTimestamp()
+    });
     return true;
   });
 }
@@ -104,15 +111,16 @@ export async function getLeagueSnapshot() {
   if (profile.weekId !== weekId() || !profile.batchId) return null;
   const bSnap = await getDoc(batchRef(profile.weekId, profile.batchId));
   if (!bSnap.exists()) return null;
-  const data = bSnap.data();
-  const leaderboard = rankMembers(data.members || {});
+  const membersSnap = await getDocs(query(membersRef(profile.weekId, profile.batchId), orderBy('weeklyXp', 'desc'), limit(LEAGUE_SIZE)));
+  const leaderboard = rankMembers(Object.fromEntries(membersSnap.docs.map(item => [item.id, item.data()])));
+  const current = leaderboard.find(x => x.uid === user.uid);
   return {
     ...profile,
     league: LEAGUES.find(x => x.id === profile.tier) || LEAGUES[0],
     leaderboard,
-    rank: leaderboard.find(x => x.uid === user.uid)?.rank || leaderboard.length,
-    weeklyXp: leaderboard.find(x => x.uid === user.uid)?.weeklyXp || 0,
-    memberCount: Number(data.memberCount) || leaderboard.length,
+    rank: current?.rank || leaderboard.length,
+    weeklyXp: current?.weeklyXp || 0,
+    memberCount: Number(bSnap.data().memberCount) || leaderboard.length,
     weekId: profile.weekId,
     uid: user.uid,
   };
