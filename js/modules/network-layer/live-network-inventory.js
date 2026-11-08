@@ -80,26 +80,9 @@ regMod({
             <button class="btn ghost sm" type="button" id="lni-public-ip-check">Check public IP</button>
           </div>
           <div class="lni-browser-actions">
-            <button class="btn sm" type="button" id="lni-connect-agent">Get full network inventory</button>
+            <button class="btn sm" type="button" id="lni-connect-agent">Connect local Python helper</button>
             <span>No installation is needed to use browser mode.</span>
           </div>
-        </section>
-        <section class="lni-agent-modal-backdrop" id="lni-agent-modal" hidden>
-          <section class="lni-agent-modal" role="dialog" aria-modal="true" aria-labelledby="lni-agent-modal-title">
-            <button class="lni-agent-close" type="button" id="lni-agent-close" aria-label="Close">×</button>
-            <div class="lni-kicker">OPTIONAL · FULL DEVICE INVENTORY</div>
-            <h2 id="lni-agent-modal-title">Connect your actual network</h2>
-            <p class="lni-agent-intro">To inspect private IPs, adapters, gateways, routes and cached neighbours, run BitSecure’s read-only helper on this computer. Nothing runs until you download and start it.</p>
-            <div class="lni-agent-os-row"><label for="lni-agent-os">Your operating system</label><select id="lni-agent-os"><option value="linux">Linux</option><option value="windows">Windows</option><option value="other">Other / not sure</option></select></div>
-            <ol class="lni-agent-steps-list">
-              <li><b>Download the helper</b><p>Save the small Python script from the BitSecure repository.</p><a class="btn ghost sm" id="lni-agent-download" href="https://github.com/AIYUSHH/DC_Project/releases/download/network-agent-latest/network_agent-linux" download>Download Linux helper</a><a class="btn ghost sm" id="lni-agent-python-fallback" href="./tools/network-agent/network_agent.py" download="network_agent.py">Use Python script instead</a></li>
-              <li><b>Open the downloaded file location</b><p id="lni-agent-open-folder">Open your Downloads folder. On Linux, right-click an empty area and choose “Open in Terminal”. A website cannot open a terminal or reveal your chosen save folder automatically.</p></li>
-              <li><b>Start the helper</b><p id="lni-agent-run-instructions">Open a terminal in the downloaded file folder and run:</p><div class="lni-command"><code id="lni-agent-command">chmod +x ./network_agent-linux && ./network_agent-linux</code><button type="button" id="lni-agent-copy">Copy</button></div><small id="lni-agent-python-note">The standalone helper does not require Python.</small></li>
-              <li><b>Return here and connect</b><p>Keep the terminal window open while using the inventory.</p><button class="btn sm" type="button" id="lni-agent-connect">I started it — connect now</button></li>
-            </ol>
-            <div class="lni-agent-security"><b>Privacy and safety</b><span>The helper currently supports Windows and Linux, listens only on this computer (127.0.0.1), reads existing OS network tables, and does not scan the LAN or change settings. The neighbour cache is not a complete topology.</span></div>
-            <p class="lni-agent-python-links">Need Python? <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">Get Python from python.org</a>. Browser mode and the learning demo remain available without it.</p>
-          </section>
         </section>
         <section class="lni-welcome" id="lni-welcome" hidden>
           <div class="lni-welcome-icon">⌘</div><div>
@@ -207,7 +190,7 @@ regMod({
       if(!consent()){showConsent();return;}
       if(refreshBusy)return;refreshBusy=true;controller?.abort();controller=new AbortController();el('#lni-refresh').disabled=true;demoMode=false;status('Checking for the BitSecure Network Agent…','loading');
       try{const response=await fetch(ENDPOINT,{cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(!data.ok)throw new Error(data.error||'Agent error');render(data);status('Connected · '+data.platform+' · live OS data','ok');el('#lni-source').textContent='Updated '+new Date(data.collected_at||Date.now()).toLocaleTimeString();el('#lni-agent-label').textContent='LIVE DEVICE DATA';el('#lni-auto').disabled=false;}
-      catch(error){if(error.name==='AbortError')return;stopAutoRefresh();snapshot=null;demoMode=false;el('#lni-dashboard').hidden=true;el('#lni-welcome').hidden=false;el('#lni-source').textContent='NO LIVE DATA';el('#lni-agent-label').textContent='LIVE CONNECTION NOT AVAILABLE';el('#lni-welcome-title').textContent='BitSecure Network Agent not detected';el('#lni-welcome-copy').textContent='Your permission is saved, but no local agent responded. Open the downloaded BitSecure helper and keep its terminal window running, then try again.';status('No live data · local helper not detected','error');}
+      catch(error){if(error.name==='AbortError')return;stopAutoRefresh();snapshot=null;demoMode=false;el('#lni-dashboard').hidden=true;el('#lni-welcome').hidden=false;el('#lni-source').textContent='NO LIVE DATA';el('#lni-agent-label').textContent='LIVE CONNECTION NOT AVAILABLE';el('#lni-welcome-title').textContent='BitSecure Network Agent not detected';el('#lni-welcome-copy').textContent='Your permission is saved, but no local Python helper responded. Download network_agent.py, open a terminal in its folder, and run python3 network_agent.py (Linux/macOS) or py network_agent.py (Windows). Keep the terminal open, then retry.';status('No live data · local helper not detected','error');}
       finally{refreshBusy=false;el('#lni-refresh').disabled=false;}
     }
     root.addEventListener('click',event=>{
@@ -218,58 +201,7 @@ regMod({
       const copy=event.target.closest('[data-copy]');if(copy)copyValue(copy.dataset.copy,copy);
     });
     el('#lni-refresh').addEventListener('click',refresh);
-    const agentModal=el('#lni-agent-modal');
-    const agentOS=el('#lni-agent-os');
-    const updateAgentCommand=()=>{
-      const os=agentOS.value,download=el('#lni-agent-download'),fallback=el('#lni-agent-python-fallback');
-      if(os==='windows'){
-        download.href='https://github.com/AIYUSHH/DC_Project/releases/download/network-agent-latest/network_agent-windows.exe';
-        download.textContent='Download Windows helper (.exe)';
-        el('#lni-agent-open-folder').textContent='Open your Downloads folder and double-click network_agent-windows.exe. Keep its console window open. No Python or terminal command is needed.';
-        el('#lni-agent-run-instructions').textContent='Windows: double-click the downloaded .exe. No command is required.';
-        el('#lni-agent-command').textContent='(No command needed — double-click the .exe)';
-        el('#lni-agent-copy').hidden=true;
-        el('#lni-agent-python-note').textContent='Standalone Windows executable; Python is not required.';
-        fallback.hidden=false;
-      }else if(os==='linux'){
-        download.href='https://github.com/AIYUSHH/DC_Project/releases/download/network-agent-latest/network_agent-linux';
-        download.textContent='Download Linux helper';
-        el('#lni-agent-open-folder').textContent='Open your Downloads folder and double-click network_agent-linux. If your file manager asks, choose “Run” or “Allow executing file”. The helper will try to open a terminal window itself.';
-        el('#lni-agent-run-instructions').textContent='Linux: double-click the downloaded executable. If your desktop blocks it, use the fallback command below:';
-        el('#lni-agent-command').textContent='chmod +x ./network_agent-linux && ./network_agent-linux';
-        el('#lni-agent-copy').hidden=false;
-        el('#lni-agent-python-note').textContent='Standalone Linux executable; Python is not required. Some Linux desktops require you to mark the file executable first.';
-        fallback.hidden=false;
-      }else{
-        download.href='./tools/network-agent/network_agent.py';
-        download.textContent='Download Python helper script';
-        el('#lni-agent-open-folder').textContent='Open the folder where you saved the script, then open a terminal there.';
-        el('#lni-agent-run-instructions').textContent='Run the command appropriate for your system:';
-        el('#lni-agent-command').textContent='python3 network_agent.py';
-        el('#lni-agent-copy').hidden=false;
-        el('#lni-agent-python-note').textContent='This fallback requires Python 3.9+. Native builds are currently provided for Windows and Linux x64.';
-        fallback.hidden=true;
-      }
-    };
-    const openAgentModal=()=>{agentModal.hidden=false;updateAgentCommand();agentOS.focus();};
-    const closeAgentModal=()=>{agentModal.hidden=true;};
-    const detectOS=()=>{const ua=navigator.userAgent||'';agentOS.value=/Android|iPhone|iPad|iPod/i.test(ua)?'other':/Windows/i.test(ua)?'windows':/Linux/i.test(ua)?'linux':'other';updateAgentCommand();};
-    el('#lni-connect-agent').addEventListener('click',openAgentModal);
-    el('#lni-agent-close').addEventListener('click',closeAgentModal);
-    agentModal.addEventListener('click',e=>{if(e.target===agentModal)closeAgentModal();});
-    agentOS.addEventListener('change',updateAgentCommand);
-    el('#lni-agent-copy').addEventListener('click',e=>copyValue(el('#lni-agent-command').textContent,e.currentTarget));
-    el('#lni-agent-connect').addEventListener('click',async()=>{
-      closeAgentModal();el('#lni-refresh').hidden=false;
-      status('Waiting for the local helper…','loading');
-      for(let attempt=0;attempt<20;attempt++){
-        await refresh();
-        if(snapshot&&!demoMode)return;
-        if(attempt<19)await new Promise(resolve=>setTimeout(resolve,1000));
-      }
-      status('Helper not detected yet · keep its window open and try again','error');
-    });
-    detectOS();
+    el('#lni-connect-agent').addEventListener('click',showConsent);
     el('#lni-public-ip-check').addEventListener('click',checkPublicIp);
     window.addEventListener('online',renderBrowserStatus);
     window.addEventListener('offline',renderBrowserStatus);
@@ -295,7 +227,7 @@ regMod({
     });
     renderBrowserStatus();
     if(consent()){el('#lni-refresh').hidden=false;refresh();}
-    el('#lni-copy').addEventListener('click',e=>copyValue('python3 tools/network-agent/network_agent.py',e.currentTarget));
+    el('#lni-copy').addEventListener('click',e=>copyValue('python3 network_agent.py',e.currentTarget));
     el('#lni-auto').addEventListener('click',e=>{if(e.currentTarget.disabled)return;if(autoTimer){stopAutoRefresh();e.currentTarget.disabled=false;}else{autoTimer=setInterval(()=>{if(!document.hidden&&!demoMode)refresh();},10000);e.currentTarget.textContent='Auto refresh: 10s';e.currentTarget.setAttribute('aria-pressed','true');}});
     el('#lni-filter').addEventListener('input',e=>{neighbourQuery=e.target.value;renderNeighbours();});
     return()=>{controller?.abort();if(autoTimer)clearInterval(autoTimer);window.removeEventListener('online',renderBrowserStatus);window.removeEventListener('offline',renderBrowserStatus);browserConnection?.removeEventListener?.('change',renderBrowserStatus);};
