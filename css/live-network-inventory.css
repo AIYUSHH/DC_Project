@@ -67,3 +67,14 @@
 .lni-consent-actions .btn{min-width:125px}
 @media(max-width:480px){.lni-consent-actions{display:grid;grid-template-columns:1fr}.lni-consent-actions .btn{width:100%}}
 @media(prefers-reduced-motion:reduce){.lni-consent-dialog{animation:none}}
+
+/* Clear agent-not-detected state and installation guidance */
+.lni-agent-label{display:inline-flex;margin:.1rem 0 .55rem;padding:.22rem .5rem;border:1px solid var(--line);border-radius:6px;color:var(--muted);font:700 .64rem var(--mono);letter-spacing:.06em}
+.lni-agent-steps{display:grid;gap:.35rem;margin:.9rem 0;padding:.85rem;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+.lni-agent-steps>b{font-size:.84rem}
+.lni-agent-steps>p{margin:0;color:var(--muted);font-size:.8rem}
+.lni-agent-steps>small{color:var(--muted);font-size:.74rem;line-height:1.5}
+.lni-agent-steps code{font-family:var(--mono);overflow-wrap:anywhere}
+.lni-demo-disclaimer{margin:.5rem 0 0;color:var(--muted);font-size:.72rem}
+.lni-welcome-actions{margin-top:.8rem}
+.lni-welcome-actions .btn{min-height:38px}
