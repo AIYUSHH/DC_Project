@@ -49,3 +49,21 @@
 @media(max-width:760px){.lni-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.lni-overview-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.lni-head{align-items:flex-start}.lni-actions{width:100%}.lni-actions .btn{flex:1}.lni-welcome{flex-direction:column}.lni-interface-explorer{grid-template-columns:1fr}.lni-interface-list{grid-template-columns:repeat(2,minmax(0,1fr))}.lni-route{align-items:flex-start;flex-wrap:wrap}.lni-route>div{flex:1 1 35%}.lni-status small{display:none}}
 @media(prefers-reduced-motion:reduce){.lni *{animation:none!important;transition:none!important}}
+
+/* First-run permission dialog */
+.lni-consent-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:1rem;background:rgba(4,8,20,.72);backdrop-filter:blur(5px)}
+.lni-consent-backdrop[hidden]{display:none!important}
+.lni-consent-dialog{width:min(560px,100%);max-height:min(90vh,820px);overflow:auto;padding:clamp(1.1rem,3vw,1.7rem);border:1px solid var(--line2);border-radius:18px;background:var(--surface);color:var(--text);box-shadow:var(--shadow,0 24px 80px rgba(0,0,0,.4));animation:lni-dialog-in .2s ease-out}
+@keyframes lni-dialog-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.lni-consent-symbol{display:grid;place-items:center;width:48px;height:48px;margin-bottom:.9rem;border-radius:14px;background:var(--accent-soft);color:var(--accent);font-size:1.7rem}
+.lni-consent-dialog h2{font-size:clamp(1.25rem,3vw,1.65rem);line-height:1.2;margin:.4rem 0 .65rem}
+.lni-consent-dialog>p{color:var(--muted);font-size:.88rem;line-height:1.55}
+.lni-consent-list{display:grid;gap:.55rem;margin:1rem 0}
+.lni-consent-list>div{display:grid;gap:.18rem;padding:.7rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+.lni-consent-list b{font-size:.82rem}
+.lni-consent-list span{font-size:.78rem;line-height:1.45;color:var(--muted)}
+.lni-consent-dialog .lni-consent-footnote{font-size:.75rem}
+.lni-consent-actions{display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;margin-top:1.1rem}
+.lni-consent-actions .btn{min-width:125px}
+@media(max-width:480px){.lni-consent-actions{display:grid;grid-template-columns:1fr}.lni-consent-actions .btn{width:100%}}
+@media(prefers-reduced-motion:reduce){.lni-consent-dialog{animation:none}}
