@@ -340,6 +340,87 @@ regMod({
             const renderList = (title, items, formatter) => items && items.length
               ? '<details class="dns-live-details"><summary>' + escapeHtml(title) + ' <span class="dns-live-count">' + items.length + '</span></summary><div class="dns-live-details-body">' + items.map(formatter).join('') + '</div></details>'
               : '';
+
+            const geoCache = new Map();
+            let leafletPromise = null;
+            const isPublicIp = value => {
+              const ip=String(value||'').trim();
+              if(/^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(ip)){
+                const a=ip.split('.').map(Number);
+                if(a.some(n=>n>255))return false;
+                const [x,y]=a;
+                return !(x===0||x===10||x===127||x>=224||(x===169&&y===254)||(x===172&&y>=16&&y<=31)||(x===192&&y===168)||(x===100&&y>=64&&y<=127)||(x===192&&y===0)||(x===198&&(y===18||y===19)));
+              }
+              if(ip.includes(':')){
+                const v=ip.toLowerCase();
+                return v!=='::'&&v!=='::1'&&!v.startsWith('fe80:')&&!v.startsWith('fc')&&!v.startsWith('fd')&&!v.startsWith('ff')&&!v.startsWith('2001:db8:');
+              }
+              return false;
+            };
+            const loadLeaflet = () => {
+              if(window.L)return Promise.resolve(window.L);
+              if(leafletPromise)return leafletPromise;
+              leafletPromise=new Promise((resolve,reject)=>{
+                if(!document.querySelector('link[data-dns-leaflet]')){
+                  const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';css.dataset.dnsLeaflet='1';document.head.appendChild(css);
+                }
+                const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.async=true;
+                script.onload=()=>window.L?resolve(window.L):reject(new Error('Map library did not initialise.'));
+                script.onerror=()=>reject(new Error('Could not load the map library.'));
+                document.head.appendChild(script);
+              });
+              return leafletPromise;
+            };
+            const locatePublicIp = async ip => {
+              if(geoCache.has(ip))return geoCache.get(ip);
+              const task=(async()=>{
+                const response=await fetch('https://ipwho.is/'+encodeURIComponent(ip),{headers:{Accept:'application/json'}});
+                if(!response.ok)throw new Error('Geolocation lookup failed for '+ip);
+                const data=await response.json();
+                if(!data.success||!Number.isFinite(Number(data.latitude))||!Number.isFinite(Number(data.longitude)))return null;
+                return {ip,lat:Number(data.latitude),lon:Number(data.longitude),city:data.city,region:data.region,country:data.country,isp:data.connection?.isp,org:data.connection?.org};
+              })();
+              geoCache.set(ip,task);
+              try{const result=await task;geoCache.set(ip,result);return result;}catch(error){geoCache.delete(ip);throw error;}
+            };
+            const renderWorldMap = async (trace,host) => {
+              const mapHost=host.querySelector('#dns-world-map'),listHost=host.querySelector('#dns-world-map-list');
+              if(!mapHost||!listHost)return;
+              const candidates=[];
+              (trace.steps||[]).forEach((step,index)=>{
+                if(isPublicIp(step.server))candidates.push({ip:step.server,role:(labels[step.stage]||'DNS server')+' · query '+(index+1)});
+                (step.glue||[]).forEach(record=>{
+                  if(String(record.type).toUpperCase()==='A'&&isPublicIp(record.data))candidates.push({ip:record.data,role:'DNS referral glue · '+record.name});
+                  if(String(record.type).toUpperCase()==='AAAA'&&isPublicIp(record.data))candidates.push({ip:record.data,role:'IPv6 referral glue · '+record.name});
+                });
+              });
+              (trace.answers||[]).forEach(record=>{
+                if(['A','AAAA'].includes(String(record.type).toUpperCase())&&isPublicIp(record.data))candidates.push({ip:record.data,role:'Final answer · '+record.name});
+              });
+              const unique=[...new Map(candidates.map(x=>[x.ip,x])).values()].slice(0,30);
+              if(!unique.length){mapHost.innerHTML='<p class="hint">This DNS trace did not expose any public IP addresses that can be plotted. Private, hidden and hostname-only entries are not assigned locations.</p>';listHost.innerHTML='';return;}
+              mapHost.innerHTML='<p class="hint">Locating '+unique.length+' public IP address(es)…</p>';
+              listHost.innerHTML='';
+              const results=await Promise.all(unique.map(async item=>{try{return {...item,geo:await locatePublicIp(item.ip)};}catch{return {...item,geo:null};}}));
+              if(!mapHost.isConnected)return;
+              const located=results.filter(x=>x.geo);
+              listHost.innerHTML=results.map(item=>'<div class="dns-world-map-row"><b>'+escapeHtml(item.ip)+'</b><span>'+escapeHtml(item.role)+'</span><small>'+(item.geo?[escapeHtml(item.geo.city),escapeHtml(item.geo.region),escapeHtml(item.geo.country)].filter(Boolean).join(', ')||'Approximate location unavailable':'Location unavailable')+'</small></div>').join('');
+              if(!located.length){mapHost.innerHTML='<p class="hint">No geolocation results were available. The DNS trace itself is still shown above.</p>';return;}
+              try{
+                const L=await loadLeaflet();
+                if(!mapHost.isConnected)return;
+                mapHost.innerHTML='<div id="dns-world-map-canvas" role="img" aria-label="Map of approximate locations of public IP addresses in this DNS trace"></div>';
+                const map=L.map(mapHost.querySelector('#dns-world-map-canvas'),{scrollWheelZoom:false}).setView([20,0],2);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',maxZoom:18}).addTo(map);
+                const bounds=[];
+                located.forEach(item=>{
+                  const g=item.geo,point=[g.lat,g.lon];bounds.push(point);
+                  L.marker(point).addTo(map).bindPopup('<strong>'+escapeHtml(item.ip)+'</strong><br>'+escapeHtml([g.city,g.region,g.country].filter(Boolean).join(', ')||'Approximate location')+'<br><small>'+escapeHtml(item.role)+'</small>');
+                });
+                if(bounds.length>1)map.fitBounds(bounds,{padding:[28,28],maxZoom:5});else map.setView(bounds[0],4);
+                setTimeout(()=>map.invalidateSize(),100);
+              }catch(error){mapHost.innerHTML='<p class="hint">Map could not be loaded: '+escapeHtml(error.message)+'. The geolocated IP list remains available.</p>';}
+            };
             const run = async () => {
               const name=$('#live-dns-name',p).value.trim(), type=$('#live-dns-type',p).value;
               const status=$('#live-dns-status',p), output=$('#live-dns-output',p), button=$('#live-dns-run',p);
@@ -410,8 +491,10 @@ regMod({
                   return '<div class="dns-live-stage"><span class="dns-live-dot"></span><article class="dns-live-stage-card"><div class="dns-live-stage-head"><div><div class="dns-live-stage-title">'+String(i+1).padStart(2,'0')+' · '+escapeHtml(stage)+'</div><div class="dns-live-stage-server">'+escapeHtml(step.server)+'</div></div><span class="dns-live-badge">'+escapeHtml(step.elapsedMs)+' ms</span></div><div class="dns-live-badges"><span class="dns-live-badge">'+escapeHtml(step.rcode===0?'NOERROR':step.rcode)+'</span>'+(step.authoritative?'<span class="dns-live-badge">Authoritative answer</span>':'<span class="dns-live-badge">Referral / lookup</span>')+'</div><details class="dns-live-details"><summary>View query and response details</summary><div class="dns-live-details-body">'+detailItems.join('')+referralHtml+glueHtml+answerHtml+'</div></details></article></div>';
                 }).join('')+'</div></section>';
                 html+='<section class="dns-live-section"><h3>Final DNS records</h3>'+renderRecords(answers)+'</section>';
+                html+='<section class="dns-live-section"><h3>World map · IP locations</h3><p class="dns-live-meta">Approximate geolocation of public DNS servers, referral addresses and final A/AAAA answers observed in this trace. Private and unavailable IPs are not plotted.</p><div id="dns-world-map" class="dns-world-map"></div><div id="dns-world-map-list" class="dns-world-map-list"></div><p class="dns-live-meta">IP geolocation is approximate, not a physical server address. IPs are sent to ipwho.is for location lookup; map tiles are provided by OpenStreetMap.</p></section>';
                 html+='<section class="dns-live-section"><h3>Trace information</h3><div class="dns-live-meta">Method: '+escapeHtml(data.method)+' · Queried: '+escapeHtml(data.queriedAt)+'</div></section></div>';
                 output.innerHTML=html;status.textContent='Live DNS trace completed successfully.';
+                renderWorldMap(data,output);
               } catch(error) { output.innerHTML=vd('bad','Live DNS lookup failed.',escapeHtml(error.message)+' Check the hosted resolver deployment.');status.textContent='Lookup failed.'; }
               finally { button.disabled=false; }
             };
