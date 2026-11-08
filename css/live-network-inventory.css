@@ -95,3 +95,31 @@
 .lni-browser-actions{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:.8rem}
 .lni-browser-actions span{font-size:.73rem;color:var(--muted)}
 @media(max-width:560px){.lni-browser-grid{grid-template-columns:1fr}.lni-public-ip{align-items:flex-start;flex-direction:column}.lni-public-ip button{width:100%}}
+
+/* Guided local-agent setup dialog */
+.lni-agent-modal-backdrop{position:fixed;inset:0;z-index:1100;display:grid;place-items:center;padding:1rem;background:rgba(4,8,20,.78);backdrop-filter:blur(6px)}
+.lni-agent-modal-backdrop[hidden]{display:none!important}
+.lni-agent-modal{position:relative;width:min(650px,100%);max-height:min(92vh,900px);overflow:auto;padding:clamp(1.1rem,3vw,1.8rem);border:1px solid var(--line2);border-radius:18px;background:var(--surface);color:var(--text);box-shadow:var(--shadow,0 24px 80px rgba(0,0,0,.45));animation:lni-dialog-in .2s ease-out}
+.lni-agent-modal h2{margin:.35rem 2rem .45rem 0;font-size:clamp(1.35rem,3vw,1.8rem);line-height:1.2}
+.lni-agent-intro{margin:.4rem 0 1rem;color:var(--muted);font-size:.84rem;line-height:1.55}
+.lni-agent-close{position:absolute;right:1rem;top:.85rem;width:36px;height:36px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);color:var(--text);font-size:1.35rem;cursor:pointer}
+.lni-agent-os-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.8rem 0;padding:.7rem .8rem;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+.lni-agent-os-row label{font-size:.8rem;font-weight:600}
+.lni-agent-os-row select{max-width:55%;padding:.45rem .6rem;border:1px solid var(--line2);border-radius:7px;background:var(--surface);color:var(--text);font:inherit}
+.lni-agent-steps-list{display:grid;gap:.7rem;padding-left:1.45rem;margin:1rem 0}
+.lni-agent-steps-list li{padding:.1rem 0 .8rem .25rem;border-bottom:1px solid var(--line)}
+.lni-agent-steps-list li:last-child{border:0;padding-bottom:0}
+.lni-agent-steps-list li::marker{color:var(--accent);font:700 .9rem var(--mono)}
+.lni-agent-steps-list li>b{font-size:.86rem}
+.lni-agent-steps-list p{margin:.25rem 0 .5rem;color:var(--muted);font-size:.78rem;line-height:1.45}
+.lni-agent-steps-list small{display:block;margin-top:.4rem;color:var(--muted);font-size:.72rem;line-height:1.45}
+.lni-agent-steps-list .lni-command{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.55rem .65rem;border:1px solid var(--line);border-radius:8px;background:var(--bg2)}
+.lni-agent-steps-list .lni-command code{min-width:0;overflow-wrap:anywhere;font: .78rem var(--mono)}
+.lni-agent-steps-list .lni-command button{flex:none;border:0;border-radius:6px;padding:.35rem .6rem;background:var(--accent-soft);color:var(--accent);cursor:pointer}
+.lni-agent-security{display:grid;gap:.2rem;padding:.75rem .85rem;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+.lni-agent-security b{font-size:.8rem}
+.lni-agent-security span,.lni-agent-python-links{color:var(--muted);font-size:.73rem;line-height:1.5}
+.lni-agent-python-links{margin:.8rem 0 0}
+.lni-agent-python-links a{color:var(--accent)}
+@media(max-width:520px){.lni-agent-os-row{align-items:flex-start;flex-direction:column}.lni-agent-os-row select{max-width:none;width:100%}}
+@media(prefers-reduced-motion:reduce){.lni-agent-modal{animation:none}}
