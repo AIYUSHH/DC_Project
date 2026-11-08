@@ -5,9 +5,9 @@ import { LEAGUE_SIZE } from './leagues.js';
 
 const nextMonday = () => {
   const d = new Date();
-  const days = (8 - (d.getDay() || 7)) % 7 || 7;
-  d.setDate(d.getDate() + days);
-  d.setHours(0, 0, 0, 0);
+  const days = (8 - (d.getUTCDay() || 7)) % 7 || 7;
+  d.setUTCDate(d.getUTCDate() + days);
+  d.setUTCHours(0, 0, 0, 0);
   return d;
 };
 
