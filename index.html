@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
     />
     <!-- Stylesheets: loaded in this order on purpose. Later files can override earlier ones (the "cascade"). -->
     <link rel="stylesheet" href="css/tokens.css" />
@@ -37,7 +37,7 @@
     <link rel="stylesheet" href="css/protocol-comparison.css" />
     <link rel="stylesheet" href="css/network-performance.css" />
     <link rel="stylesheet" href="css/firewall.css" />
-    <link rel="stylesheet" href="css/about-support.css" />
+    <link rel="stylesheet" href="css/game.css" />
     <link rel="icon" type="image/png" href="/favicon.png">
     <script>
       try {
@@ -109,73 +109,13 @@
         <strong id="app-auth-loading-title">Please wait...</strong>
         <span class="auth-loading-detail">This may take a few moments.</span>
       </div>
-      <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="brand">
-  <img
-    class="logo"
-    src="./favicon.png"
-    alt=""
-    aria-hidden="true"
-  />
-  <div class="brand-t">
-    BitSecure<small>Follow one message end to end</small>
-  </div>
-</div>
-        <nav id="nav" aria-label="Lab sections"></nav>
-        <div class="link" id="link">
-          <div class="row">
-            <span class="led" aria-hidden="true"></span
-            ><span id="ls">Link is up</span>
-          </div>
-          <button class="btn ghost sm" id="lb" aria-pressed="false">
-            Take link down
-          </button>
-        </div>
-      </aside>
-      <div class="scrim" id="scrim"></div>
-
       <div class="main">
         <header class="topbar">
-          <button
-            class="icon-btn menu"
-            id="menuBtn"
-            aria-label="Open navigation"
-          >
-            <svg
-              class="ic"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              aria-hidden="true"
-            >
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <button
-            class="icon-btn sidebar-toggle"
-            id="sidebarToggleBtn"
-            type="button"
-            aria-label="Hide sidebar"
-            aria-controls="sidebar"
-            aria-expanded="true"
-            title="Hide sidebar"
-          >
-            <svg
-              class="ic"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M9 4v16" />
-            </svg>
-          </button>
+          <a class="gbrand" id="gbrand" href="#/" aria-label="BitSecure home">⚡ BitSecure</a>
+          <div class="link" id="link">
+            <span class="led" aria-hidden="true"></span><span id="ls">Link is up</span>
+            <button class="btn ghost sm" id="lb" aria-pressed="false">Take link down</button>
+          </div>
           <div class="crumbs" id="crumbs" aria-label="Breadcrumb"></div>
           <div class="module-search">
             <label class="module-search-field" for="moduleSearch">
@@ -185,6 +125,7 @@
             </label>
             <div class="module-search-results" id="moduleSearchResults" role="listbox" aria-label="Search results" hidden></div>
           </div>
+          <a class="gpill" id="gpill" href="#/profile" aria-label="Your level and streak"></a>
           <div class="top-stats" aria-label="Current run totals">
             <span class="tstat"><b id="n1">0</b> bytes</span
             ><span class="tstat"><b id="n2">0</b> packets</span
@@ -422,10 +363,9 @@
           <!-- ============ Dynamic views ============ -->
           <section class="stage" id="dash"></section>
           <section class="stage" id="mview"></section>
-          <section class="stage" id="info-page"></section>
         </main>
         <footer class="site-foot">
-          <span>BitSecure · Interactive learning through simulation</span><span class="footer-links"><a href="#/about">About Us</a><a href="#/support">Support Us</a><a href="https://github.com/sahilvxky25/DC_Project" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+          Data Comms Lab · every simulator runs locally in your browser
         </footer>
       </div>
       <dialog class="password-dialog" id="changePasswordDialog" aria-labelledby="passwordDialogTitle">

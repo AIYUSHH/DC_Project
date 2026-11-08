@@ -27,7 +27,7 @@
 
 import { P, save } from './core/storage.js';
 import { $ } from './core/utils.js';
-import { buildNav } from './app/navigation.js';
+import { initGameUi } from './game/ui.js';
 import { route } from './app/router.js';
 import { applyTheme } from './app/theme.js';
 import { labInit } from './lab/lab-init.js';
@@ -69,7 +69,7 @@ function boot() {
   if (hasBooted) return;
   hasBooted = true;
   applyTheme(P.theme);
-  buildNav();
+  initGameUi();
   initModuleSearch();
   labInit();
   // Toggle the theme and remember the choice in saved progress (an empty theme means "follow the
@@ -80,37 +80,6 @@ function boot() {
     save();
     applyTheme(t);
   };
-  $('#menuBtn').onclick = () => document.body.classList.toggle('nav-open');
-  // Desktop sidebar toggle. Keep the preference across reloads without affecting the mobile drawer.
-  const appShell = $('.app');
-  const sidebarToggleBtn = $('#sidebarToggleBtn');
-  const updateSidebarToggle = collapsed => {
-    sidebarToggleBtn.setAttribute('aria-expanded', String(!collapsed));
-    sidebarToggleBtn.setAttribute('aria-label', collapsed ? 'Show sidebar' : 'Hide sidebar');
-    sidebarToggleBtn.setAttribute('title', collapsed ? 'Show sidebar' : 'Hide sidebar');
-  };
-
-  try {
-    const savedSidebarState = localStorage.getItem('bitsecure-sidebar-collapsed') === 'true';
-    appShell.classList.toggle('sidebar-collapsed', savedSidebarState);
-    updateSidebarToggle(savedSidebarState);
-  } catch (error) {
-    // The toggle remains usable even when browser storage is unavailable.
-  }
-
-  sidebarToggleBtn.onclick = () => {
-    const collapsed = appShell.classList.toggle('sidebar-collapsed');
-    updateSidebarToggle(collapsed);
-    try {
-      localStorage.setItem('bitsecure-sidebar-collapsed', String(collapsed));
-    } catch (error) {
-      // Do not block the UI if browser storage is unavailable.
-    }
-  };
-  $('#scrim').onclick = () => document.body.classList.remove('nav-open');
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.body.classList.remove('nav-open');
-  });
   // Every change of the URL hash (link click, back/forward button, typed URL) re-runs the router.
   window.addEventListener('hashchange', route);
   route();

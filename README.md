@@ -247,3 +247,14 @@ Keep protocol logic separate from DOM rendering where practical, reuse shared he
 - **ES module:** A JavaScript file that shares functionality through `import` and `export`.
 - **Hash routing:** Using the URL fragment (the part after `#`) to select a screen without a full page reload.
 - **TLS:** Transport Layer Security; a protocol for protecting data in transit.
+
+## Game layer (new look)
+
+The interface is now a game-style shell around the existing modules. Nothing in `js/modules/`, `js/simulations/`, `js/core/` or `js/lab/` was rewritten.
+
+- **Flow:** every quiz module runs Watch → Play → Quiz → Reward. *Play* is the module's own `mount(root)`. Add `/play` to a module URL (`#/m/dns/play`) for free play with no quiz and no XP.
+- **Screens:** home map (`#/`), zones (`#/zone/<id>`), profile and badges (`#/profile`), daily challenge (`#/daily`).
+- **Themes:** light = Sticker, dark = Game tiles. Both are token overrides in `css/game.css`, so every simulator is restyled automatically.
+- **Code:** `js/game/data.js` (zones, difficulty, Watch scenes, quizzes), `rules.js` (pure XP, medal, level and streak rules), `store.js` (saves into the existing progress object, so Firebase sync keeps working), `flow.js`, `screens.js`, `ui.js`.
+- **Add a quiz to a module:** add an entry to `META` in `js/game/data.js` (`z` zone, `d` difficulty, `e` emoji, `w` Watch scene, `q` five `question|correct|wrong|wrong` strings).
+- **Tests:** `node --test tests/rules.test.mjs`
