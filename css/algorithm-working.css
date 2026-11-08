@@ -1,0 +1,15 @@
+/* Algorithm working-mode panels */
+.aw-panel { margin-top: 1rem; }
+.aw-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.aw-heading h3 { margin:0 0 .35rem; }
+.aw-heading .hint { margin:.15rem 0 .5rem; }
+.aw-output { margin-top:1rem; }
+.aw-result { padding:.85rem 1rem; border:1px solid var(--line, rgba(148,163,184,.25)); border-radius:12px; margin-bottom:1rem; overflow-wrap:anywhere; }
+.aw-steps { list-style:none; padding:0; margin:0; display:grid; gap:.8rem; counter-reset:aw; }
+.aw-steps li { display:grid; grid-template-columns:2rem minmax(0,1fr); gap:.7rem; align-items:start; padding:.8rem; border:1px solid var(--line, rgba(148,163,184,.2)); border-radius:12px; background:var(--panel-soft, rgba(148,163,184,.045)); }
+.aw-step-number { display:grid; place-items:center; width:1.8rem; height:1.8rem; border-radius:50%; font-weight:700; background:var(--accent-soft, rgba(59,130,246,.16)); color:var(--accent, #60a5fa); }
+.aw-steps li strong { display:block; margin:.05rem 0 .25rem; }
+.aw-steps li p { margin:.2rem 0 .5rem; color:var(--muted, #94a3b8); }
+.aw-steps pre { white-space:pre-wrap; overflow-wrap:anywhere; overflow-x:auto; margin:.45rem 0 0; padding:.7rem; border-radius:8px; background:var(--code-bg, rgba(2,6,23,.55)); font: .88rem/1.55 var(--mono, monospace); color:var(--text, inherit); }
+.aw-error { padding:.75rem 1rem; border-radius:10px; color:var(--danger, #ef4444); background:rgba(239,68,68,.08); }
+@media(max-width:600px){.aw-heading{display:block}.aw-heading button{margin-top:.5rem}.aw-panel .controls{align-items:stretch}.aw-panel .field{min-width:0}.aw-steps li{padding:.65rem;gap:.5rem}}

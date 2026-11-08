@@ -56,6 +56,14 @@ regMod({
         .enc-meter{height:6px;background:color-mix(in srgb,var(--line,#888) 20%,transparent);border-radius:9px;overflow:hidden;margin:10px 0}
         .enc-meter i{display:block;width:0;height:100%;background:var(--accent,#2878d0);transition:width .45s}
         .enc-stage.active h4:before{content:'▶ ';color:var(--accent,#2878d0)}
+        .enc-guide{margin:18px 0;padding:16px;border:1px solid var(--line,#ccc);border-radius:12px}
+        .enc-guide h3{margin:0 0 8px}.enc-guide>p{line-height:1.6}
+        .enc-guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+        .enc-guide details{border:1px solid var(--line,#ccc);border-radius:9px;padding:10px;background:color-mix(in srgb,var(--line,#888) 5%,transparent)}
+        .enc-guide summary{font-weight:650;cursor:pointer}.enc-guide details p{line-height:1.55;margin:9px 0 2px}
+        .enc-guide .enc-warning{border-left:3px solid var(--accent,#2878d0);padding:8px 11px;margin-top:12px;background:color-mix(in srgb,var(--accent,#2878d0) 8%,transparent)}
+        .enc-guide code{overflow-wrap:anywhere}
+
         @media(prefers-reduced-motion:reduce){.enc-stage,.enc-meter i{transition:none}}
       `; root.appendChild(style);
     }
@@ -73,6 +81,84 @@ regMod({
         await wait(700);
         cards[i].classList.remove('active'); cards[i].classList.add('done');
       }
+    };
+    const renderLearningGuide=mode=>{
+      const guides={
+        caesar:{
+          heading:'Caesar cipher — substitution with a fixed shift',
+          intro:'This is a classical substitution cipher. It replaces each alphabetic character with another character a fixed number of positions away. It demonstrates the idea of a key, but it is not suitable for protecting real information.',
+          cards:[
+            ['1. Convert a letter to a position','For A–Z, map A to 0, B to 1, …, Z to 25. Lowercase letters use the same positions. Spaces, punctuation and digits are left unchanged.'],
+            ['2. Apply the key (shift)','The shift value is the key. Encryption uses E(x) = (x + k) mod 26. Modulo 26 wraps past Z back to A.'],
+            ['3. Reverse the shift','Decryption uses D(y) = (y − k + 26) mod 26. The same key is used in reverse, so Caesar is a symmetric-key example.'],
+            ['4. Why it is weak','There are only 25 non-zero shifts. An attacker can try every key, and letter-frequency patterns remain visible.']
+          ],
+          warning:'Use this only to learn substitution and symmetric keys. It provides no meaningful modern security.'
+        },
+        xor:{
+          heading:'XOR byte cipher — the same operation encrypts and decrypts',
+          intro:'XOR compares bits. Equal bits produce 0; different bits produce 1. The demonstration applies a fixed byte key (0x5A) to every input byte.',
+          cards:[
+            ['1. Represent data as bits','Each byte contains eight bits. For example, 0x41 is 01000001 and the demo key 0x5A is 01011010.'],
+            ['2. Encrypt with XOR','Ciphertext = plaintext XOR key. XOR changes each bit according to the corresponding key bit.'],
+            ['3. Decrypt with XOR again','(plaintext XOR key) XOR key = plaintext, because key XOR key equals zero. The same key reverses the operation.'],
+            ['4. Why this demo is insecure','The key is fixed and reused, so anyone who knows the code knows the key. Real stream ciphers require secure key generation and a carefully designed keystream.']
+          ],
+          warning:'This fixed-key XOR mode is an illustration of a bitwise operation, not secure encryption.'
+        },
+        aes:{
+          heading:'AES-256-GCM — authenticated symmetric encryption',
+          intro:'AES is a block cipher. GCM turns it into authenticated encryption: it protects confidentiality and also checks whether the ciphertext or authenticated data was modified.',
+          cards:[
+            ['1. Generate the secret key','The browser creates a random 256-bit key. Sender and receiver both need the same secret key. Anyone who obtains it can decrypt the message.'],
+            ['2. Generate a 96-bit nonce (IV)','The nonce is sent with the ciphertext; it is not a secret. It must never be reused with the same AES-GCM key. This demo generates a fresh random 12-byte nonce for each run.'],
+            ['3. Encrypt and authenticate','AES-GCM encrypts the bytes and creates a 128-bit authentication tag. The tag is included at the end of the Web Crypto ciphertext output.'],
+            ['4. Verify before releasing plaintext','During decryption, GCM checks the tag. If ciphertext, nonce or authenticated data does not match, decryption fails and plaintext is not returned.'],
+            ['5. Understand the key problem','Encryption alone does not tell a real recipient how to obtain the secret key safely. A real application needs a secure key-management and authenticated key-establishment design.']
+          ],
+          warning:'The simulation generates a temporary key in this browser session. It demonstrates AES-GCM mechanics, not a complete production key-management system.'
+        },
+        rsa:{
+          heading:'RSA-OAEP + AES-GCM — hybrid encryption',
+          intro:'Hybrid encryption combines public-key cryptography with fast symmetric encryption. RSA is used to protect a short random AES session key; AES encrypts the actual message or file.',
+          cards:[
+            ['1. Create an RSA key pair','The receiver has an RSA public key and a matching private key. The public key may be shared; the private key must remain secret. This demo creates a temporary 2048-bit pair.'],
+            ['2. Generate an AES session key','A fresh AES-256 key is created for the payload. AES is efficient for large messages and files; RSA is not designed to encrypt large files directly.'],
+            ['3. Wrap the AES key','RSA-OAEP with SHA-256 encrypts (wraps) the short AES key using the RSA public key. Only the matching private key can unwrap it.'],
+            ['4. Encrypt the payload','AES-256-GCM encrypts the message using the session key and a fresh nonce. The ciphertext and nonce travel with the wrapped session key.'],
+            ['5. Receiver unwraps, then decrypts','The receiver uses the RSA private key to recover the AES key, then uses AES-GCM to authenticate and decrypt the payload.'],
+            ['6. What this does not solve alone','A public key must be authenticated. Otherwise an attacker could substitute their own public key. Real systems use certificates or another trusted identity mechanism.']
+          ],
+          warning:'The demo creates both RSA keys locally, so it illustrates the workflow but does not model a real sender and receiver with independently managed identities.'
+        },
+        ecdh:{
+          heading:'ECDH P-256 + AES-GCM — agree on a shared secret',
+          intro:'ECDH is a key-agreement protocol, not an encryption algorithm by itself. Two parties exchange public keys and independently derive the same shared secret. The derived key is then used with AES-GCM.',
+          cards:[
+            ['1. Each party creates a key pair','Client and server each create a private key and a corresponding public key on the P-256 elliptic curve. Private keys are never exchanged.'],
+            ['2. Exchange public keys','Each side sends its public key to the other. A public key is safe to disclose, but its owner must be authenticated.'],
+            ['3. Derive the shared secret','The client combines its private key with the server public key. The server combines its private key with the client public key. Both calculations produce the same shared secret.'],
+            ['4. Derive an AES key','A production protocol uses a key-derivation function (KDF), with context and transcript binding, to turn shared secret material into encryption keys. This demonstration asks Web Crypto to derive an AES-GCM key directly.'],
+            ['5. Encrypt with AES-GCM','The derived AES key encrypts the message and authenticates it with a nonce and tag. ECDH established the key; AES-GCM protects the data.'],
+            ['6. Authentication matters','Unauthenticated ECDH is vulnerable to a man-in-the-middle attack: an attacker can substitute public keys and establish separate secrets with both sides.']
+          ],
+          warning:'This is a learning demonstration, not a complete TLS handshake. It does not authenticate peer identities or implement the full TLS key schedule.'
+        },
+        hash:{
+          heading:'SHA-256 — hashing is not encryption',
+          intro:'A cryptographic hash maps input of any practical length to a fixed 256-bit digest. It is designed to be one-way: there is no decryption key and no operation that restores the original message.',
+          cards:[
+            ['1. Read the input bytes','Text is first encoded as UTF-8. A file is read as its raw bytes. Different byte sequences normally produce different digests.'],
+            ['2. Process the message','SHA-256 processes the input through its compression construction and produces a 256-bit (32-byte) digest. The internal rounds are not reversible encryption rounds.'],
+            ['3. Compare digests','A receiver can hash a received file and compare the digest with a trusted expected digest to detect accidental or malicious changes, provided the expected digest itself is trusted.'],
+            ['4. What hashing does not provide','A plain hash does not hide the message, prove who sent it, or authenticate the sender. Use a MAC or digital signature when authenticity is required.'],
+            ['5. Password storage is different','Passwords should be stored with a password-hashing scheme such as Argon2id, scrypt or PBKDF2, with unique salts and suitable cost settings—not as plain SHA-256 hashes.']
+          ],
+          warning:'SHA-256 produces a digest. It cannot be decrypted. For message authentication use HMAC or a digital signature as appropriate.'
+        }
+      };
+      const g=guides[mode]; if(!g)return '';
+      return '<section class="enc-guide"><h3>Understand the algorithm: '+esc(g.heading)+'</h3><p>'+esc(g.intro)+'</p><div class="enc-guide-grid">'+g.cards.map(([title,body])=>'<details><summary>'+esc(title)+'</summary><p>'+esc(body)+'</p></details>').join('')+'</div><p class="enc-warning"><strong>Security note:</strong> '+esc(g.warning)+'</p></section>';
     };
     const run=async()=>{
       if(running)return; running=true;
@@ -148,6 +234,7 @@ regMod({
         }
         stages.push(addStage(oneWay?'Final digest':'Final result',oneWay?'One-way output':'Recovered payload',bytesHex(encrypted),oneWay?'SHA-256: '+bytesHex(encrypted):(restored?file?'Original file bytes restored ('+restored.length+' bytes).':new TextDecoder().decode(restored):'No plaintext released.')));
         await showStages(stages);
+        out.insertAdjacentHTML('beforeend',renderLearningGuide(mode));
         if(downloadUrl){URL.revokeObjectURL(downloadUrl);downloadUrl=null;}
         const resultText=oneWay?'SHA-256 digest generated. This operation cannot be decrypted.':failed?'Decryption failed; data was rejected.':file?'File restored successfully.':'Restored text: '+new TextDecoder().decode(restored);
         let finalHtml=panel('Simulation result',statRow([[source.length+' bytes','input'],[encrypted.length+' bytes',oneWay?'digest':mode==='caesar'||mode==='xor'?'ciphertext':'encrypted payload'],[packets.length,'packets']])+
