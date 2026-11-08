@@ -688,3 +688,15 @@ td.info {
 @media (max-width: 640px) {
   .err-method-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* Live DNS world map */
+.dns-world-map{width:100%;min-height:280px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--bg2)}
+.dns-world-map #dns-world-map-canvas{width:100%;height:360px;min-height:280px;background:var(--bg2)}
+.dns-world-map .leaflet-container{font:13px var(--sans,system-ui);z-index:0}
+.dns-world-map-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:10px}
+.dns-world-map-row{display:grid;gap:3px;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg2)}
+.dns-world-map-row b{font:600 .8rem var(--mono);overflow-wrap:anywhere}
+.dns-world-map-row span{font-size:.75rem;color:var(--muted)}
+.dns-world-map-row small{font-size:.72rem;color:var(--accent);overflow-wrap:anywhere}
+@media(max-width:560px){.dns-world-map #dns-world-map-canvas{height:290px;min-height:260px}}
