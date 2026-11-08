@@ -342,7 +342,6 @@ regMod({
               : '';
 
             const geoCache = new Map();
-            const geoCache = new Map();
             const locatePublicIp = async ip => {
               if(geoCache.has(ip))return geoCache.get(ip);
               const task=(async()=>{
