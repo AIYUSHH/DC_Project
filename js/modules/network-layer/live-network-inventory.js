@@ -91,9 +91,10 @@ regMod({
             <p id="lni-welcome-copy">To show real information, BitSecure needs its small local companion app. It reads this computer’s network configuration and returns it only to this browser.</p>
             <div class="lni-agent-steps" id="lni-agent-steps">
               <b>Start the helper on this computer</b>
-              <p>Open a terminal in the BitSecure project folder and run:</p>
-              <div class="lni-command"><code id="lni-command-text">python3 tools/network-agent/network_agent.py</code><button type="button" id="lni-copy">Copy</button></div>
-              <small>Keep the terminal open, then select “Try connection again”. Windows users can run <code>py tools/network-agent/network_agent.py</code>.</small>
+              <p>1. Download the helper file. 2. Open a terminal in the folder where it was saved. 3. Run the command below:</p>
+              <p><a class="btn ghost sm" href="./tools/network-agent/network_agent.py" download="network_agent.py">Download network_agent.py</a></p>
+              <div class="lni-command"><code id="lni-command-text">python3 network_agent.py</code><button type="button" id="lni-copy">Copy</button></div>
+              <small>Requires Python 3.9+. Keep the terminal open, then select “Try connection again”. Windows users can run <code>py network_agent.py</code>.</small>
             </div>
             <div class="lni-welcome-actions">
               <button class="btn sm" id="lni-retry" type="button">Try connection again</button>
@@ -189,8 +190,8 @@ regMod({
     async function refresh(){
       if(!consent()){showConsent();return;}
       if(refreshBusy)return;refreshBusy=true;controller?.abort();controller=new AbortController();el('#lni-refresh').disabled=true;demoMode=false;status('Checking for the BitSecure Network Agent…','loading');
-      try{const response=await fetch(ENDPOINT,{cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(!data.ok)throw new Error(data.error||'Agent error');render(data);status('Connected · '+data.platform+' · live OS data','ok');el('#lni-source').textContent='Updated '+new Date(data.collected_at||Date.now()).toLocaleTimeString();el('#lni-agent-label').textContent='LIVE DEVICE DATA';el('#lni-auto').disabled=false;}
-      catch(error){if(error.name==='AbortError')return;stopAutoRefresh();snapshot=null;demoMode=false;el('#lni-dashboard').hidden=true;el('#lni-welcome').hidden=false;el('#lni-source').textContent='NO LIVE DATA';el('#lni-agent-label').textContent='LIVE CONNECTION NOT AVAILABLE';el('#lni-welcome-title').textContent='BitSecure Network Agent not detected';el('#lni-welcome-copy').textContent='Your permission is saved, but no local Python helper responded. Download network_agent.py, open a terminal in its folder, and run python3 network_agent.py (Linux/macOS) or py network_agent.py (Windows). Keep the terminal open, then retry.';status('No live data · local helper not detected','error');}
+      try{const response=await fetch(ENDPOINT,{method:'GET',mode:'cors',credentials:'omit',cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(!data.ok)throw new Error(data.error||'Agent error');render(data);status('Connected · '+data.platform+' · live OS data','ok');el('#lni-source').textContent='Updated '+new Date(data.collected_at||Date.now()).toLocaleTimeString();el('#lni-agent-label').textContent='LIVE DEVICE DATA';el('#lni-auto').disabled=false;}
+      catch(error){if(error.name==='AbortError')return;stopAutoRefresh();snapshot=null;demoMode=false;el('#lni-dashboard').hidden=true;el('#lni-welcome').hidden=false;el('#lni-source').textContent='NO LIVE DATA';el('#lni-agent-label').textContent='LIVE CONNECTION NOT AVAILABLE';el('#lni-welcome-title').textContent='BitSecure Network Agent not detected';el('#lni-welcome-copy').textContent='The local helper could not be reached ('+String(error.message||error)+'). Make sure network_agent.py is running in a terminal. If this page uses HTTPS, allow local-network access in your browser when prompted. On Linux, install iproute2 if the helper reports empty interface data.';status('No live data · '+String(error.message||'local helper not detected'),'error');}
       finally{refreshBusy=false;el('#lni-refresh').disabled=false;}
     }
     root.addEventListener('click',event=>{
@@ -227,7 +228,7 @@ regMod({
     });
     renderBrowserStatus();
     if(consent()){el('#lni-refresh').hidden=false;refresh();}
-    el('#lni-copy').addEventListener('click',e=>copyValue('python3 network_agent.py',e.currentTarget));
+    el('#lni-copy').addEventListener('click',e=>copyValue(/Windows/i.test(navigator.userAgent)?'py network_agent.py':'python3 network_agent.py',e.currentTarget));
     el('#lni-auto').addEventListener('click',e=>{if(e.currentTarget.disabled)return;if(autoTimer){stopAutoRefresh();e.currentTarget.disabled=false;}else{autoTimer=setInterval(()=>{if(!document.hidden&&!demoMode)refresh();},10000);e.currentTarget.textContent='Auto refresh: 10s';e.currentTarget.setAttribute('aria-pressed','true');}});
     el('#lni-filter').addEventListener('input',e=>{neighbourQuery=e.target.value;renderNeighbours();});
     return()=>{controller?.abort();if(autoTimer)clearInterval(autoTimer);window.removeEventListener('online',renderBrowserStatus);window.removeEventListener('offline',renderBrowserStatus);browserConnection?.removeEventListener?.('change',renderBrowserStatus);};
