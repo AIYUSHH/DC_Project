@@ -5,6 +5,8 @@ import { $, esc } from '../core/utils.js';
 import { ACH } from '../app/progress.js';
 import { ZONES, META, TOOLS, LAB, FACTS } from './data.js';
 import { dailyIndex, dayNum, levelFor } from './rules.js';
+import { dailyQuestionSet, dailyQuizXp } from './leagues.js';
+import { awardLeagueXp, getLeagueDecorations } from './league-service.js';
 import { BADGES, MEDALS, addXp, hasBadge, isDone, medal, quizIds, streak, xp, checkMeta } from './store.js';
 import { LEVEL_LABELS, runQuiz } from './flow.js';
 import { boom } from './ui.js';
@@ -36,7 +38,8 @@ export function renderHome() {
     <div class="ghero">
       <a class="gcard big-card" href="#/m/${nu.id}" style="${tone(nz)}"><span class="ge">${META[nu.id].e}</span><small>▶ Continue</small><b>${nu.title}</b>
         <small>${META[nu.id].d} · Watch → Play → Quiz → Badge</small>${bar((done / q.length) * 100)}<small>${done} of ${q.length} quiz modules finished</small><span class="btn">PLAY</span></a>
-      <a class="gcard" href="#/daily" style="--l:#ffe9a8;--d:#8a5cff"><span class="ge">⭐</span><small>Daily challenge</small><b>${dayDone ? 'Done today ✅' : 'One question, +50 XP'}</b><small>${dayDone ? 'Come back tomorrow for a new one.' : 'A fresh question every day.'}</small><span class="btn ghost sm">${dayDone ? 'REVIEW' : 'START'}</span></a>
+      <a class="gcard" href="#/daily" style="--l:#ffe9a8;--d:#8a5cff"><span class="ge">⭐</span><small>Daily quiz</small><b>${dayDone ? 'Done today ✅' : '5 questions · earn XP'}</b><small>${dayDone ? 'A new quiz arrives tomorrow.' : 'A fresh networking quiz every day.'}</small><span class="btn ghost sm">${dayDone ? 'VIEW' : 'START'}</span></a>
+      <a class="gcard" href="#/league" style="--l:#d9ccff;--d:#7047cf"><span class="ge">🏆</span><small>Weekly competition</small><b>Join your batch</b><small>Compete with 19 other learners.</small><span class="btn ghost sm">VIEW LEAGUE</span></a>
       <div class="gcard static" style="--l:#fff;--d:#ffffff22"><small>Your level</small><b>Lv ${l.n} · ${l.title}</b>${bar((l.into / l.size) * 100)}
         <div class="gstats"><span>🔥 <b>${streak()}</b> day streak</span><span>⭐ <b>${xp()}</b> XP</span><span>🏅 <b>${medals}</b> medals</span></div></div>
     </div>
@@ -82,31 +85,51 @@ export function renderProfile() {
     <div class="ghero"><div class="gcard static" style="--l:#d9ccff;--d:#8a5cff"><small>Level</small><b>Lv ${l.n} · ${l.title}</b>${bar((l.into / l.size) * 100)}<small>${l.into}/${l.size} XP to Lv ${l.n + 1}</small></div>
       <div class="gcard static" style="--l:#ffe9a8;--d:#f2a30a"><small>Streak</small><b>🔥 ${streak()} days</b><small>Learn a little every day to keep it.</small></div>
       <div class="gcard static" style="--l:#d4f5cf;--d:#21b573"><small>Total XP</small><b>⭐ ${xp()}</b><small>${q.filter(isDone).length}/${q.length} quiz modules finished</small></div></div>
+    <h3 class="gh">Exclusive profile decorations</h3><div class="ggrid" id="leagueDecorations"><div class="gcard static"><b>League rewards</b><small>Loading your earned decorations…</small></div></div>
     <h3 class="gh">Special badges</h3><div class="ggrid">${Object.keys(BADGES).map(b => tile(BADGES[b][1], b === 'egg' && !hasBadge(b) ? '???' : BADGES[b][0], BADGES[b][2], hasBadge(b))).join('')}</div>
     <h3 class="gh">Module medals</h3><div class="ggrid">${q.filter(byId).map(id => { const m = medal(id); return tile(MEDALS[m], byId(id).title, ['Not earned yet', 'Bronze', 'Silver', 'Gold'][m], m > 0); }).join('')}</div>
     <h3 class="gh">Lab achievements</h3><div class="ggrid">${ACH.map(a => tile(a.icon, a.name, a.desc, !!P.ach[a.id])).join('')}</div>
     <h3 class="gh">Recent core-lab runs</h3>${P.runs.length ? `<div class="gcard static" style="--l:#fff;--d:#ffffff22"><table class="gruns"><tbody>${P.runs.slice(0, 5).map(r => `<tr><td>${new Date(r.ts || 0).toLocaleString()}</td><td>${r.packets} packets</td><td>${r.loss}% loss</td><td>${r.retries} retries</td><td>${r.ok ? '✅ delivered' : '⚠️ incomplete'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="gfoot">No runs yet. Try the core lab!</p>'}
     <div class="gcols"><a class="gcard" href="#/m/challenges" style="--l:#ffd1e1;--d:#ec4f9c"><span class="ge">🎯</span><b>Challenges and checks</b><small>Extra practice with levels 1 to 5.</small></a>
       <a class="gcard" href="#/m/glossary" style="--l:#bfe3ff;--d:#2f8cff"><span class="ge">📖</span><b>Glossary</b><small>Every term, searchable.</small></a></div></div>`;
+  getLeagueDecorations().then(items => {
+    const target = $('#leagueDecorations');
+    if (!target) return;
+    target.innerHTML = items.length ? items.map(item => `<div class="gcard static league-decoration"><span class="ge">${item.includes('diamond') ? '💎' : item.includes('platinum') ? '💠' : item.includes('gold') ? '🥇' : '🏅'}</span><b>${esc(item.replaceAll('-', ' ').replace('weekly top5 ', 'Weekly top 5 · '))}</b><small>Earned by finishing in the top 5 of a weekly batch.</small></div>`).join('') : '<div class="gcard static"><span class="ge">🎖️</span><b>No league decorations yet</b><small>Finish in the weekly top 5 to unlock an exclusive profile decoration.</small></div>';
+  }).catch(() => {});
 }
 
 export function renderDaily() {
   const all = Object.keys(META).filter(i => META[i].q && byId(i)).flatMap(i => META[i].q), day = dayNum();
-  const q = all[dailyIndex(day, all.length)];
-  $('#dash').innerHTML = `<div class="ghome"><a class="gback" href="#/">‹ Map</a><h2 class="gh">⭐ Daily challenge</h2>
+  const questions = dailyQuestionSet(all, day, 5);
+  $('#dash').innerHTML = `<div class="ghome"><a class="gback" href="#/">‹ Map</a><h2 class="gh">⭐ Daily networking quiz</h2>
+    <p class="gfoot">Five questions · one attempt per day · earn lifetime XP and weekly league points.</p>
     <div class="gstage" id="gstage"></div><div class="gbar"><button class="btn big" id="gnext" type="button" hidden></button></div></div>`;
   const stage = $('#gstage'), next = $('#gnext');
   if (P.stats.dailyDay === day) {
-    stage.innerHTML = '<div class="greward"><div class="gmedal">✅</div><h3>Already done today</h3><p>Come back tomorrow for a new question.</p></div>';
+    stage.innerHTML = '<div class="greward"><div class="gmedal">✅</div><h3>Daily quiz completed</h3><p>Come back tomorrow for a new set of questions.</p></div>';
     next.hidden = false; next.textContent = 'Back to map ▸'; next.onclick = () => (location.hash = '#/');
     return;
   }
-  runQuiz(stage, [q], ['Bonus'], right => {
-    P.stats.dailyDay = day;
-    addXp(right ? 50 : 5);
-    checkMeta();
-    if (right) boom();
-    stage.innerHTML = `<div class="greward"><div class="gmedal">${right ? '🌟' : '💪'}</div><h3>+${right ? 50 : 5} XP</h3><p>${right ? 'Correct! See you tomorrow.' : 'Good try. Every question teaches something.'}</p></div>`;
-    next.textContent = 'Back to map ▸'; next.hidden = false; next.onclick = () => (location.hash = '#/');
+  runQuiz(stage, questions, questions.map((_, i) => 'Daily · ' + (i + 1) + '/' + questions.length), async right => {
+    const gained = dailyQuizXp(right, questions.length);
+    try {
+      const awarded = await awardLeagueXp(gained, 'daily:' + day);
+      if (!awarded) {
+        stage.innerHTML = '<div class="greward"><div class="gmedal">✅</div><h3>Daily quiz already recorded</h3><p>Your score has already been counted for today.</p></div>';
+        next.textContent = 'Back to map ▸'; next.hidden = false; next.onclick = () => (location.hash = '#/');
+        return;
+      }
+      P.stats.dailyDay = day;
+      addXp(gained);
+      checkMeta();
+      if (right === questions.length) boom();
+      stage.innerHTML = `<div class="greward"><div class="gmedal">${right === questions.length ? '🌟' : '💪'}</div><h3>${right}/${questions.length} correct · +${gained} XP</h3><p>Your daily reward has been added to lifetime XP and this week's league score.</p></div>`;
+      next.textContent = 'View weekly competition ▸'; next.hidden = false; next.onclick = () => (location.hash = '#/league');
+    } catch (error) {
+      stage.innerHTML = `<div class="greward"><div class="gmedal">⚠️</div><h3>Quiz completed, score not synced</h3><p>${esc(error.message || 'Check your connection and try again.')}</p></div>`;
+      next.textContent = 'Retry score sync'; next.hidden = false;
+      next.onclick = () => (location.hash = '#/daily');
+    }
   });
 }
