@@ -24,6 +24,12 @@ BitSecure is an interactive, browser-based Data Communications and Computer Netw
 - Build and explore network topologies.
 - Experiment with a Wi-Fi simulator covering access points, clients, SSID, band, channel, signal coverage, simplified interference, and obstacles.
 
+### Live local network inventory
+- Optionally inspect this computer's OS-reported network interfaces, default routes, neighbour cache, and current Wi-Fi connection.
+- Uses a separate Python 3.9+ helper bound to `127.0.0.1`; the browser module is read-only and works only while the helper is running.
+- The helper performs no host discovery, ping, port scan, packet capture, or network configuration changes.
+- Neighbour-cache entries are not a complete device inventory or physical topology. See `tools/network-agent/README.md` for setup and limitations.
+
 ### Transport layer
 - Compare TCP and UDP and inspect transport headers and ports.
 - Step through the TCP handshake.
