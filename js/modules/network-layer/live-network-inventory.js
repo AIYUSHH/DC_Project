@@ -92,9 +92,9 @@ regMod({
             <p class="lni-agent-intro">To inspect private IPs, adapters, gateways, routes and cached neighbours, run BitSecure’s read-only helper on this computer. Nothing runs until you download and start it.</p>
             <div class="lni-agent-os-row"><label for="lni-agent-os">Your operating system</label><select id="lni-agent-os"><option value="linux">Linux</option><option value="windows">Windows</option><option value="other">Other / not sure</option></select></div>
             <ol class="lni-agent-steps-list">
-              <li><b>Download the helper</b><p>Save the small Python script from the BitSecure repository.</p><a class="btn ghost sm" href="./tools/network-agent/network_agent.py" download="network_agent.py">Download network_agent.py</a></li>
-              <li><b>Open a terminal in the download folder</b><p>On Windows, open PowerShell. On Linux, open Terminal. Change to the folder where the file was saved.</p></li>
-              <li><b>Run this command</b><div class="lni-command"><code id="lni-agent-command">python3 network_agent.py</code><button type="button" id="lni-agent-copy">Copy</button></div><small id="lni-agent-python-note">Requires Python 3.9 or newer. If Python is missing, install it first.</small></li>
+              <li><b>Download the helper</b><p>Save the small Python script from the BitSecure repository.</p><a class="btn ghost sm" id="lni-agent-download" href="https://github.com/AIYUSHH/DC_Project/releases/download/network-agent-latest/network_agent-linux" download>Download Linux helper</a><a class="btn ghost sm" id="lni-agent-python-fallback" href="./tools/network-agent/network_agent.py" download="network_agent.py">Use Python script instead</a></li>
+              <li><b>Open the downloaded file location</b><p id="lni-agent-open-folder">Open your Downloads folder. On Linux, right-click an empty area and choose “Open in Terminal”. A website cannot open a terminal or reveal your chosen save folder automatically.</p></li>
+              <li><b>Start the helper</b><p id="lni-agent-run-instructions">Open a terminal in the downloaded file folder and run:</p><div class="lni-command"><code id="lni-agent-command">chmod +x ./network_agent-linux && ./network_agent-linux</code><button type="button" id="lni-agent-copy">Copy</button></div><small id="lni-agent-python-note">The standalone helper does not require Python.</small></li>
               <li><b>Return here and connect</b><p>Keep the terminal window open while using the inventory.</p><button class="btn sm" type="button" id="lni-agent-connect">I started it — connect now</button></li>
             </ol>
             <div class="lni-agent-security"><b>Privacy and safety</b><span>The helper currently supports Windows and Linux, listens only on this computer (127.0.0.1), reads existing OS network tables, and does not scan the LAN or change settings. The neighbour cache is not a complete topology.</span></div>
@@ -220,7 +220,37 @@ regMod({
     el('#lni-refresh').addEventListener('click',refresh);
     const agentModal=el('#lni-agent-modal');
     const agentOS=el('#lni-agent-os');
-    const updateAgentCommand=()=>{const os=agentOS.value;el('#lni-agent-command').textContent=os==='windows'?'py network_agent.py':os==='linux'?'python3 network_agent.py':'python network_agent.py';el('#lni-agent-python-note').textContent=os==='windows'?'Requires Python 3.9+. If the py command is unavailable, install Python and enable the Python launcher.':'Requires Python 3.9 or newer. If Python is missing, install it first.';};
+    const updateAgentCommand=()=>{
+      const os=agentOS.value,download=el('#lni-agent-download'),fallback=el('#lni-agent-python-fallback');
+      if(os==='windows'){
+        download.href='https://github.com/AIYUSHH/DC_Project/releases/download/network-agent-latest/network_agent-windows.exe';
+        download.textContent='Download Windows helper (.exe)';
+        el('#lni-agent-open-folder').textContent='Open your Downloads folder and double-click network_agent-windows.exe. Keep its console window open. No Python or terminal command is needed.';
+        el('#lni-agent-run-instructions').textContent='Windows: double-click the downloaded .exe. No command is required.';
+        el('#lni-agent-command').textContent='(No command needed — double-click the .exe)';
+        el('#lni-agent-copy').hidden=true;
+        el('#lni-agent-python-note').textContent='Standalone Windows executable; Python is not required.';
+        fallback.hidden=false;
+      }else if(os==='linux'){
+        download.href='https://github.com/AIYUSHH/DC_Project/releases/download/network-agent-latest/network_agent-linux';
+        download.textContent='Download Linux helper';
+        el('#lni-agent-open-folder').textContent='Open your Downloads folder. Right-click an empty area and choose “Open in Terminal”.';
+        el('#lni-agent-run-instructions').textContent='Run this command in the terminal opened in Downloads:';
+        el('#lni-agent-command').textContent='chmod +x ./network_agent-linux && ./network_agent-linux';
+        el('#lni-agent-copy').hidden=false;
+        el('#lni-agent-python-note').textContent='Standalone Linux executable; Python is not required.';
+        fallback.hidden=false;
+      }else{
+        download.href='./tools/network-agent/network_agent.py';
+        download.textContent='Download Python helper script';
+        el('#lni-agent-open-folder').textContent='Open the folder where you saved the script, then open a terminal there.';
+        el('#lni-agent-run-instructions').textContent='Run the command appropriate for your system:';
+        el('#lni-agent-command').textContent='python3 network_agent.py';
+        el('#lni-agent-copy').hidden=false;
+        el('#lni-agent-python-note').textContent='This fallback requires Python 3.9+. Native builds are currently provided for Windows and Linux x64.';
+        fallback.hidden=true;
+      }
+    };
     const openAgentModal=()=>{agentModal.hidden=false;updateAgentCommand();agentOS.focus();};
     const closeAgentModal=()=>{agentModal.hidden=true;};
     const detectOS=()=>{const ua=navigator.userAgent||'';agentOS.value=/Android|iPhone|iPad|iPod/i.test(ua)?'other':/Windows/i.test(ua)?'windows':/Linux/i.test(ua)?'linux':'other';updateAgentCommand();};
