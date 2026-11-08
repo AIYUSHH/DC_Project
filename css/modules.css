@@ -688,3 +688,22 @@ td.info {
 @media (max-width: 640px) {
   .err-method-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* DNS world map: self-contained SVG, independent of external tile servers. */
+.dns-world-map{min-height:0;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--bg2)}
+.dns-world-map-svg{display:block;width:100%;height:auto;min-height:220px;max-height:480px}
+.dns-world-ocean{fill:color-mix(in srgb,var(--accent) 8%,var(--bg2))}
+.dns-world-gridline{stroke:var(--line);stroke-width:1;opacity:.65}
+.dns-world-continents path{fill:color-mix(in srgb,var(--muted) 22%,var(--surface));stroke:var(--line2);stroke-width:2;stroke-linejoin:round}
+.dns-world-marker{cursor:help;outline:none}
+.dns-world-marker-halo{fill:var(--accent);opacity:.2}
+.dns-world-marker-dot{fill:var(--accent);stroke:var(--bg);stroke-width:2}
+.dns-world-marker text{fill:var(--text);font:700 12px var(--mono);paint-order:stroke;stroke:var(--bg2);stroke-width:3px}
+.dns-world-marker:focus .dns-world-marker-dot{stroke:var(--ok);stroke-width:4}
+.dns-world-map-legend,.dns-world-map-message{padding:12px 14px;color:var(--muted);font-size:.8rem;border-top:1px solid var(--line)}
+.dns-world-map-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:10px}
+.dns-world-map-row{display:grid;gap:3px;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg2)}
+.dns-world-map-row b{font:600 .8rem var(--mono);overflow-wrap:anywhere}
+.dns-world-map-row span{font-size:.75rem;color:var(--muted)}
+.dns-world-map-row small{font-size:.72rem;color:var(--accent);overflow-wrap:anywhere}
