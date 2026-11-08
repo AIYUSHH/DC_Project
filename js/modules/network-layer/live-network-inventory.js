@@ -27,10 +27,10 @@ const sample = {
 
 regMod({
   id:'live-network-inventory', group:'net', title:'Live network inventory',
-  desc:'Explore this computer’s interfaces, IP addresses, gateway, neighbour cache and Wi-Fi connection.',
+  desc:'Explore live browser-reported connectivity, public IP and optional operating-system network inventory.',
   obj:[
-    'Inspect interface addresses, default routes and neighbour-cache entries.',
-    'Understand which details come from the operating system and which are unavailable to a browser.',
+    'Inspect browser-reported connectivity and public IP information without installing software.',
+    'Optionally connect a local helper for operating-system interface, route and neighbour-cache details.',
     'Distinguish a cached neighbour list from a complete physical network map.'
   ],
   mount(root) {
@@ -64,7 +64,7 @@ regMod({
           </div>
           <div class="lni-actions">
             <button class="btn" id="lni-refresh" type="button" hidden>↻ Refresh device inventory</button>
-            <button class="btn ghost sm" id="lni-auto" type="button" aria-pressed="false">Auto refresh: Off</button>
+            <button class="btn ghost sm" id="lni-auto" type="button" aria-pressed="false" disabled>Auto refresh: Off</button>
           </div>
         </header>
         <div class="lni-status" id="lni-status" role="status" aria-live="polite"><i></i><span id="lni-status-text">Waiting for local network helper</span><small id="lni-source">No data loaded</small></div>
