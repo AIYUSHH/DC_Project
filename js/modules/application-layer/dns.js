@@ -341,6 +341,19 @@ regMod({
               ? '<details class="dns-live-details"><summary>' + escapeHtml(title) + ' <span class="dns-live-count">' + items.length + '</span></summary><div class="dns-live-details-body">' + items.map(formatter).join('') + '</div></details>'
               : '';
 
+            const isPublicIp = value => {
+              const ip=String(value||'').trim();
+              const parts=ip.split('.');
+              if(parts.length===4&&parts.every(x=>/^\d{1,3}$/.test(x)&&Number(x)<=255)){
+                const [a,b]=parts.map(Number);
+                return !(a===0||a===10||a===127||a>=224||(a===169&&b===254)||(a===172&&b>=16&&b<=31)||(a===192&&b===168)||(a===100&&b>=64&&b<=127)||(a===192&&b===0)||(a===198&&(b===18||b===19)));
+              }
+              if(ip.includes(':')){
+                const v=ip.toLowerCase();
+                return v!=='::'&&v!=='::1'&&!v.startsWith('fe80:')&&!v.startsWith('fc')&&!v.startsWith('fd')&&!v.startsWith('ff')&&!v.startsWith('2001:db8:');
+              }
+              return false;
+            };
             const geoCache = new Map();
             const locatePublicIp = async ip => {
               if(geoCache.has(ip))return geoCache.get(ip);
@@ -359,7 +372,7 @@ regMod({
               if(!mapHost||!listHost)return;
               const candidates=[];
               (trace.steps||[]).forEach((step,index)=>{
-                if(isPublicIp(step.server))candidates.push({ip:step.server,role:(labels[step.stage]||'DNS server')+' · query '+(index+1)});
+                if(isPublicIp(step.server))candidates.push({ip:step.server,role:(({root:'Root server',tld:'TLD server',authoritative:'Authoritative server'})[step.stage]||'DNS server')+' · query '+(index+1)});
                 (step.glue||[]).forEach(record=>{
                   if(['A','AAAA'].includes(String(record.type).toUpperCase())&&isPublicIp(record.data))candidates.push({ip:record.data,role:'DNS referral glue · '+record.name});
                 });
@@ -471,7 +484,7 @@ regMod({
                 html+='<section class="dns-live-section"><h3>World map · IP locations</h3><p class="dns-live-meta">Approximate geolocation of public DNS servers, referral addresses and final A/AAAA answers observed in this trace. Private and unavailable IPs are not plotted.</p><div id="dns-world-map" class="dns-world-map"></div><div id="dns-world-map-list" class="dns-world-map-list"></div><p class="dns-live-meta">IP geolocation is approximate, not a physical server address. Public IPs are sent to ipwho.is for location lookup.</p></section>';
                 html+='<section class="dns-live-section"><h3>Trace information</h3><div class="dns-live-meta">Method: '+escapeHtml(data.method)+' · Queried: '+escapeHtml(data.queriedAt)+'</div></section></div>';
                 output.innerHTML=html;status.textContent='Live DNS trace completed successfully.';
-                renderWorldMap(data,output);
+                renderWorldMap(data,output).catch(error=>{const map=output.querySelector('#dns-world-map');if(map)map.innerHTML='<div class="dns-world-map-message">Map rendering failed: '+escapeHtml(error.message||error)+'</div>';});
               } catch(error) { output.innerHTML=vd('bad','Live DNS lookup failed.',escapeHtml(error.message)+' Check the hosted resolver deployment.');status.textContent='Lookup failed.'; }
               finally { button.disabled=false; }
             };
