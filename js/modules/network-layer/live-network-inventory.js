@@ -207,7 +207,7 @@ regMod({
       if(!consent()){showConsent();return;}
       if(refreshBusy)return;refreshBusy=true;controller?.abort();controller=new AbortController();el('#lni-refresh').disabled=true;demoMode=false;status('Checking for the BitSecure Network Agent…','loading');
       try{const response=await fetch(ENDPOINT,{cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(!data.ok)throw new Error(data.error||'Agent error');render(data);status('Connected · '+data.platform+' · live OS data','ok');el('#lni-source').textContent='Updated '+new Date(data.collected_at||Date.now()).toLocaleTimeString();el('#lni-agent-label').textContent='LIVE DEVICE DATA';el('#lni-auto').disabled=false;}
-      catch(error){if(error.name==='AbortError')return;stopAutoRefresh();snapshot=null;demoMode=false;el('#lni-dashboard').hidden=true;el('#lni-welcome').hidden=false;el('#lni-source').textContent='NO LIVE DATA';el('#lni-agent-label').textContent='LIVE CONNECTION NOT AVAILABLE';el('#lni-welcome-title').textContent='BitSecure Network Agent not detected';el('#lni-welcome-copy').textContent='Your permission is saved, but no local agent responded. This website cannot start or install a program on your computer. Start the helper below, then try again.';status('No live data · local helper not detected','error');}
+      catch(error){if(error.name==='AbortError')return;stopAutoRefresh();snapshot=null;demoMode=false;el('#lni-dashboard').hidden=true;el('#lni-welcome').hidden=false;el('#lni-source').textContent='NO LIVE DATA';el('#lni-agent-label').textContent='LIVE CONNECTION NOT AVAILABLE';el('#lni-welcome-title').textContent='BitSecure Network Agent not detected';el('#lni-welcome-copy').textContent='Your permission is saved, but no local agent responded. Open the downloaded BitSecure helper and keep its terminal window running, then try again.';status('No live data · local helper not detected','error');}
       finally{refreshBusy=false;el('#lni-refresh').disabled=false;}
     }
     root.addEventListener('click',event=>{
@@ -234,11 +234,11 @@ regMod({
       }else if(os==='linux'){
         download.href='https://github.com/AIYUSHH/DC_Project/releases/download/network-agent-latest/network_agent-linux';
         download.textContent='Download Linux helper';
-        el('#lni-agent-open-folder').textContent='Open your Downloads folder. Right-click an empty area and choose “Open in Terminal”.';
-        el('#lni-agent-run-instructions').textContent='Run this command in the terminal opened in Downloads:';
+        el('#lni-agent-open-folder').textContent='Open your Downloads folder and double-click network_agent-linux. If your file manager asks, choose “Run” or “Allow executing file”. The helper will try to open a terminal window itself.';
+        el('#lni-agent-run-instructions').textContent='Linux: double-click the downloaded executable. If your desktop blocks it, use the fallback command below:';
         el('#lni-agent-command').textContent='chmod +x ./network_agent-linux && ./network_agent-linux';
         el('#lni-agent-copy').hidden=false;
-        el('#lni-agent-python-note').textContent='Standalone Linux executable; Python is not required.';
+        el('#lni-agent-python-note').textContent='Standalone Linux executable; Python is not required. Some Linux desktops require you to mark the file executable first.';
         fallback.hidden=false;
       }else{
         download.href='./tools/network-agent/network_agent.py';
@@ -259,7 +259,16 @@ regMod({
     agentModal.addEventListener('click',e=>{if(e.target===agentModal)closeAgentModal();});
     agentOS.addEventListener('change',updateAgentCommand);
     el('#lni-agent-copy').addEventListener('click',e=>copyValue(el('#lni-agent-command').textContent,e.currentTarget));
-    el('#lni-agent-connect').addEventListener('click',()=>{closeAgentModal();el('#lni-refresh').hidden=false;refresh();});
+    el('#lni-agent-connect').addEventListener('click',async()=>{
+      closeAgentModal();el('#lni-refresh').hidden=false;
+      status('Waiting for the local helper…','loading');
+      for(let attempt=0;attempt<20;attempt++){
+        await refresh();
+        if(snapshot&&!demoMode)return;
+        if(attempt<19)await new Promise(resolve=>setTimeout(resolve,1000));
+      }
+      status('Helper not detected yet · keep its window open and try again','error');
+    });
     detectOS();
     el('#lni-public-ip-check').addEventListener('click',checkPublicIp);
     window.addEventListener('online',renderBrowserStatus);
