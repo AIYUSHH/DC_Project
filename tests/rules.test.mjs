@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { quizXp, medalFor, levelFor, streakNext, quizBadges, dailyIndex } from '../js/game/rules.js';
+import { LEAGUE_SIZE, LEAGUES, weekId, rankMembers, nextLeague, dailyQuizXp, dailyQuestionSet } from '../js/game/leagues.js';
 
 test('quiz XP', () => {
   assert.equal(quizXp(0, 5), 30);
@@ -34,7 +35,6 @@ test('daily index stays in range', () => {
   for (let d = -3; d < 50; d++) assert.ok(dailyIndex(d, 7) >= 0 && dailyIndex(d, 7) < 7);
 });
 
-import { LEAGUE_SIZE, LEAGUES, weekId, rankMembers, nextLeague, dailyQuizXp, dailyQuestionSet } from '../js/game/leagues.js';
 
 test('weekly league batches hold 20 learners', () => {
   assert.equal(LEAGUE_SIZE, 20);
