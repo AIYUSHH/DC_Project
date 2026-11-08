@@ -54,6 +54,35 @@ BitSecure is an interactive, browser-based Data Communications and Computer Netw
 - A local account-specific cache helps preserve progress when cloud access is temporarily unavailable.
 - Responsive navigation includes a collapsible desktop sidebar and a mobile navigation drawer.
 
+## Daily quizzes and weekly leagues
+
+- The daily quiz selects five questions from the registered module-question bank and changes its selection each UTC day.
+- A daily attempt is recorded once per learner per day and awards XP based on the score.
+- Weekly competition uses five tiers: Bronze, Silver, Gold, Platinum, and Diamond.
+- Each batch targets a maximum of 20 learners. The leaderboard ranks weekly XP; ranks 1–5 are promotion positions, 6–15 stay in the same tier, and 16–20 are demotion positions. Diamond is the highest tier and Bronze is the entry tier.
+- Eligible module quiz rewards count once per module per competition week. The daily quiz counts once per day. Lifetime XP and the existing progress document remain separate from weekly XP.
+- Top-five finishes unlock exclusive profile decoration records. Decorations are displayed on the learner profile.
+
+### Firestore data used by leagues
+
+The league feature uses these additional paths:
+
+```text
+users/{uid}/league/profile
+leagueWeeks/{weekId}/batches/{batchId}
+leagueWeeks/{weekId}/batches/{batchId}/members/{uid}
+```
+
+The batch stores its tier and member count; each learner's score is in their own member document. This keeps one learner from directly editing another learner's member document when rules are configured accordingly. The query index for batch allocation is in `firestore.indexes.json`; deploy it with the Firebase CLI:
+
+```bash
+firebase deploy --only firestore:indexes
+```
+
+**Important competition security limitation:** this branch's browser implementation submits XP events directly to Firestore. Per-user member documents help isolate writes, but a determined user can still forge their own score by calling the Firestore API. Do not use these scores for prizes, paid benefits, or trusted rankings until quiz attempts and score awards are validated by a trusted Firebase Cloud Function or your existing Azure API. In production, deny direct client writes to league scores and let that trusted backend create memberships, award XP, settle weekly ranks, and grant decorations. Firestore rules must also permit authenticated reads of the relevant batch and member documents while restricting member writes to the matching UID. Do not use broad test-mode rules in production.
+
+The client computes promotion/demotion when a learner returns in the new UTC week using the frozen prior-week leaderboard. This is suitable for a prototype; a trusted scheduled settlement job should finalize all batches and rewards for production.
+
 ## Technology
 
 - HTML, CSS, and vanilla JavaScript using native ES modules.
