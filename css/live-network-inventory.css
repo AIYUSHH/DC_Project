@@ -1,0 +1,30 @@
+/* Live network inventory */
+.live-network { display: grid; gap: 1rem; min-width: 0; }
+.live-network-heading { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+.live-network-heading h2 { margin:.15rem 0 .4rem; }
+.live-network-heading p { margin-bottom:0; }
+.live-network-notice { display:grid; gap:.25rem; padding:.9rem 1rem; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+.live-network-notice span,.live-network-footnote { color:var(--muted); font-size:.88rem; }
+.live-network-status { padding:.7rem .9rem; border-radius:10px; background:var(--panel-2); color:var(--muted); }
+.live-network-status.is-ok { color:var(--success, #22c55e); }
+.live-network-status.is-error { color:var(--danger, #ef4444); }
+.live-network-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.65rem; }
+.live-network-stat { display:grid; gap:.15rem; padding:.8rem; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+.live-network-stat strong { font-size:1.4rem; }
+.live-network-stat span { color:var(--muted); font-size:.8rem; }
+.live-network-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.live-network-grid .panel { min-width:0; }
+.live-network-grid h3 { margin-top:0; }
+.live-network-table-wrap { overflow-x:auto; }
+.live-network-table { width:100%; border-collapse:collapse; font-size:.84rem; }
+.live-network-table th,.live-network-table td { padding:.55rem .5rem; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+.live-network-table th { color:var(--muted); font-weight:600; }
+.live-network-limitations { margin:.5rem 0 0; padding-left:1.2rem; color:var(--muted); }
+.live-network-limitations li+li { margin-top:.35rem; }
+@media (max-width:760px) {
+  .live-network-grid { grid-template-columns:1fr; }
+  .live-network-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:480px) {
+  .live-network-heading { align-items:flex-start; flex-direction:column; }
+}
