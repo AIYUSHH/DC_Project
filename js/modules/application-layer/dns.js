@@ -345,7 +345,7 @@ regMod({
             let leafletPromise = null;
             const isPublicIp = value => {
               const ip=String(value||'').trim();
-              if(/^\\d{1,3}(?:\\.\\d{1,3}){3}$/.test(ip)){
+              if(/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)){
                 const a=ip.split('.').map(Number);
                 if(a.some(n=>n>255))return false;
                 const [x,y]=a;
