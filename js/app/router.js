@@ -177,6 +177,7 @@ function renderInfoPage(page) {
         <div class="developer-grid">
           <article class="developer-card"><div class="developer-avatar" aria-hidden="true">SP</div><h3>Sahil Patra</h3><p>Developer</p><a href="https://github.com/sahilvxky25" target="_blank" rel="noopener noreferrer">GitHub · @sahilvxky25 ↗</a></article>
           <article class="developer-card"><div class="developer-avatar" aria-hidden="true">AA</div><h3>Aiyush Anand</h3><p>Developer</p><a href="https://github.com/AIYUSHH" target="_blank" rel="noopener noreferrer">GitHub · @AIYUSHH ↗</a></article>
+          <article class="developer-card"><div class="developer-avatar" aria-hidden="true">SR</div><h3>Somya Ranjan</h3><p>Developer</p><a href="https://github.com/Somya22005" target="_blank" rel="noopener noreferrer">GitHub · @Somya22005 ↗</a></article>
         </div>
       </section>
       <section class="info-cta"><div><span class="info-kicker">KEEP EXPLORING</span><h2>Curiosity is where understanding begins.</h2><p>Try the lab and explore how data moves through a network.</p></div><div class="info-cta-actions"><a class="btn" href="#/">Open BitSecure <span aria-hidden="true">→</span></a><a class="btn ghost" href="https://github.com/sahilvxky25/DC_Project" target="_blank" rel="noopener noreferrer">View GitHub Repository ↗</a></div></section>`;
