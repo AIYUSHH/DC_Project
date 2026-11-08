@@ -9,7 +9,7 @@ import { db } from '../auth/firebase-client.js';
 import {
   collection, doc, getDoc, getDocs, limit, query, runTransaction, serverTimestamp, where
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
-import { LEAGUES, LEAGUE_SIZE, nextLeague, rankMembers, weekId, previousWeekId } from './leagues.js';
+import { LEAGUES, LEAGUE_SIZE, nextLeague, rankMembers, weekId } from './leagues.js';
 
 const profileRef = uid => doc(db, 'users', uid, 'league', 'profile');
 const batchesRef = week => collection(db, 'leagueWeeks', week, 'batches');
