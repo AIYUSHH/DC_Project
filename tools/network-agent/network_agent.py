@@ -7,12 +7,13 @@ Requires Python 3.9+. Run: python network_agent.py
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import platform
 import shutil
 import subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -150,6 +151,74 @@ def windows_inventory() -> dict:
     return {"interfaces": interfaces, "default_routes": routes, "neighbours": neighbours, "wifi": wifi}
 
 
+
+def valid_trace_target(value: str) -> str | None:
+    target = (value or "").strip().rstrip(".")
+    if not target or len(target) > 253 or any(ch.isspace() for ch in target):
+        return None
+    try:
+        ipaddress.ip_address(target)
+        return target
+    except ValueError:
+        pass
+    labels = target.split(".")
+    if any(not label or len(label) > 63 or not label[0].isalnum() or not label[-1].isalnum()
+           or any(not (ch.isalnum() or ch == "-") for ch in label) for label in labels):
+        return None
+    return target
+
+
+def run_traceroute(target: str) -> dict:
+    """Run a bounded OS traceroute; never invokes a shell or accepts command flags."""
+    system = platform.system()
+    if system == "Windows":
+        command = ["tracert", "-d", "-h", "20", "-w", "1000", target]
+    elif system == "Linux":
+        traceroute = shutil.which("traceroute")
+        tracepath = shutil.which("tracepath")
+        if traceroute:
+            command = [traceroute, "-n", "-m", "20", "-q", "1", "-w", "1", target]
+        elif tracepath:
+            command = [tracepath, "-n", "-m", "20", target]
+        else:
+            raise RuntimeError("Neither traceroute nor tracepath is installed. Install traceroute (or iputils-tracepath) and retry.")
+    elif system == "Darwin":
+        traceroute = shutil.which("traceroute")
+        if not traceroute:
+            raise RuntimeError("The traceroute utility is not available on this Mac.")
+        command = [traceroute, "-n", "-m", "20", "-q", "1", "-w", "1", target]
+    else:
+        raise RuntimeError("Traceroute is currently supported on Windows, Linux and macOS.")
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=35, check=False)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("Traceroute timed out after 35 seconds.")
+    except OSError as exc:
+        raise RuntimeError("Could not start traceroute: " + str(exc))
+    output = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
+    hops = []
+    for line in output.splitlines():
+        match = __import__("re").match(r"^\s*(\d+)\s+(.*)$", line)
+        if not match:
+            continue
+        number, rest = int(match.group(1)), match.group(2)
+        ips = __import__("re").findall(r"(?:\d{1,3}\.){3}\d{1,3}|[0-9a-fA-F:]{3,}", rest)
+        address = None
+        for candidate in ips:
+            try:
+                address = str(ipaddress.ip_address(candidate))
+                break
+            except ValueError:
+                continue
+        times = [float(x) for x in __import__("re").findall(r"(\d+(?:\.\d+)?)\s*ms", rest)]
+        hops.append({"hop": number, "ip": address,
+                     "rtt_ms": round(sum(times) / len(times), 2) if times else None,
+                     "status": "reply" if address else "timeout", "raw": rest[:240]})
+    return {"ok": result.returncode == 0 or bool(hops), "target": target,
+            "platform": system, "method": "tracert" if system == "Windows" else "traceroute",
+            "hops": hops[:20], "complete": any(h.get("ip") == target for h in hops),
+            "exit_code": result.returncode, "raw_summary": output[-1200:]}
+
 def collect_inventory() -> dict:
     system = platform.system()
     data = linux_inventory() if system == "Linux" else windows_inventory() if system == "Windows" else {
@@ -195,10 +264,21 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self) -> None:
-        if urlparse(self.path).path != "/api/network":
-            self._send(404, {"ok": False, "error": "Not found"})
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/network":
+            self._send(200, collect_inventory())
             return
-        self._send(200, collect_inventory())
+        if parsed.path == "/api/traceroute":
+            target = valid_trace_target(parse_qs(parsed.query).get("target", [""])[0])
+            if not target:
+                self._send(400, {"ok": False, "error": "Enter a valid hostname or IP address."})
+                return
+            try:
+                self._send(200, run_traceroute(target))
+            except RuntimeError as exc:
+                self._send(501, {"ok": False, "error": str(exc)})
+            return
+        self._send(404, {"ok": False, "error": "Not found"})
 
     def log_message(self, fmt: str, *args) -> None:
         print("[BitSecure agent] " + (fmt % args))
