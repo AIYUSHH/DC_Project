@@ -110,10 +110,16 @@ def windows_inventory() -> dict:
                 if isinstance(data, dict):
                     data = [data]
                 for item in data:
-                    addresses = [{"family": "inet", "address": x, "prefix": None} for x in item.get("ipv4", [])]
-                    addresses += [{"family": "inet6", "address": x, "prefix": None} for x in item.get("ipv6", [])]
+                    ipv4 = item.get("ipv4") or []
+                    ipv6 = item.get("ipv6") or []
+                    gateways = item.get("gateway") or []
+                    ipv4 = [ipv4] if isinstance(ipv4, str) else ipv4
+                    ipv6 = [ipv6] if isinstance(ipv6, str) else ipv6
+                    gateways = [gateways] if isinstance(gateways, str) else gateways
+                    addresses = [{"family": "inet", "address": x, "prefix": None} for x in ipv4]
+                    addresses += [{"family": "inet6", "address": x, "prefix": None} for x in ipv6]
                     interfaces.append({"name": item.get("name"), "state": "OS reported", "mac": None, "addresses": addresses})
-                    for gateway in item.get("gateway", []):
+                    for gateway in gateways:
                         routes.append({"destination": "default", "gateway": gateway, "interface": item.get("name")})
             except (ValueError, TypeError):
                 pass
