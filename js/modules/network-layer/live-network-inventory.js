@@ -97,7 +97,7 @@ regMod({
               <li><b>Run this command</b><div class="lni-command"><code id="lni-agent-command">python3 network_agent.py</code><button type="button" id="lni-agent-copy">Copy</button></div><small id="lni-agent-python-note">Requires Python 3.9 or newer. If Python is missing, install it first.</small></li>
               <li><b>Return here and connect</b><p>Keep the terminal window open while using the inventory.</p><button class="btn sm" type="button" id="lni-agent-connect">I started it — connect now</button></li>
             </ol>
-            <div class="lni-agent-security"><b>Privacy and safety</b><span>The helper listens only on this computer (127.0.0.1), reads existing OS network tables, and does not scan the LAN or change settings. The neighbour cache is not a complete topology.</span></div>
+            <div class="lni-agent-security"><b>Privacy and safety</b><span>The helper currently supports Windows and Linux, listens only on this computer (127.0.0.1), reads existing OS network tables, and does not scan the LAN or change settings. The neighbour cache is not a complete topology.</span></div>
             <p class="lni-agent-python-links">Need Python? <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">Get Python from python.org</a>. Browser mode and the learning demo remain available without it.</p>
           </section>
         </section>
@@ -151,7 +151,7 @@ regMod({
     const status=(message,kind='')=>{el('#lni-status').className='lni-status '+kind;el('#lni-status-text').textContent=message;};
     const tableEmpty=msg=>'<p class="lni-empty">'+safe(msg)+'</p>';
     const setTab=tab=>{activeTab=tab;root.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));root.querySelectorAll('.lni-view').forEach(v=>v.hidden=v.id!=='lni-view-'+tab);};
-    const copyValue=async(value,button)=>{try{await navigator.clipboard.writeText(value);button.textContent='Copied ✓';}catch{button.textContent=value;}};
+    const copyValue=async(value,button)=>{try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);}else{throw new Error('Clipboard unavailable');}button.textContent='Copied ✓';}catch{const field=document.createElement('textarea');field.value=value;field.setAttribute('readonly','');field.style.position='fixed';field.style.opacity='0';root.appendChild(field);field.select();let copied=false;try{copied=document.execCommand('copy');}catch{}field.remove();button.textContent=copied?'Copied ✓':'Select and copy the command';if(!copied){const code=button.parentElement?.querySelector('code');if(code)code.textContent=value;}}};
     function renderBrowserStatus(){
       const online=navigator.onLine;
       el('#lni-online').textContent=online?'Online':'Offline';
@@ -223,7 +223,7 @@ regMod({
     const updateAgentCommand=()=>{const os=agentOS.value;el('#lni-agent-command').textContent=os==='windows'?'py network_agent.py':os==='linux'?'python3 network_agent.py':'python network_agent.py';el('#lni-agent-python-note').textContent=os==='windows'?'Requires Python 3.9+. If the py command is unavailable, install Python and enable the Python launcher.':'Requires Python 3.9 or newer. If Python is missing, install it first.';};
     const openAgentModal=()=>{agentModal.hidden=false;updateAgentCommand();agentOS.focus();};
     const closeAgentModal=()=>{agentModal.hidden=true;};
-    const detectOS=()=>{const ua=navigator.userAgent||'';agentOS.value=/Windows/i.test(ua)?'windows':/Linux|Android/i.test(ua)?'linux':'other';updateAgentCommand();};
+    const detectOS=()=>{const ua=navigator.userAgent||'';agentOS.value=/Android|iPhone|iPad|iPod/i.test(ua)?'other':/Windows/i.test(ua)?'windows':/Linux/i.test(ua)?'linux':'other';updateAgentCommand();};
     el('#lni-connect-agent').addEventListener('click',openAgentModal);
     el('#lni-agent-close').addEventListener('click',closeAgentModal);
     agentModal.addEventListener('click',e=>{if(e.target===agentModal)closeAgentModal();});
