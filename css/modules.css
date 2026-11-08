@@ -707,3 +707,16 @@ td.info {
 .dns-world-map-row b{font:600 .8rem var(--mono);overflow-wrap:anywhere}
 .dns-world-map-row span{font-size:.75rem;color:var(--muted)}
 .dns-world-map-row small{font-size:.72rem;color:var(--accent);overflow-wrap:anywhere}
+
+
+/* Live traceroute route map */
+.dns-route-map{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--bg2)}
+.dns-route-map svg{display:block;width:100%;height:auto;min-height:220px}
+.dns-route-map-caption{padding:10px 13px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted);line-height:1.45}
+.dns-route-hop-list{display:grid;gap:7px;margin-top:12px}
+.dns-route-hop{display:grid;grid-template-columns:65px minmax(0,1fr) 75px;gap:6px 10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg2)}
+.dns-route-hop b{font-size:.82rem}
+.dns-route-hop code{overflow-wrap:anywhere;font-size:.78rem}
+.dns-route-hop span{text-align:right;font: .76rem var(--mono);color:var(--muted)}
+.dns-route-hop small{grid-column:2/4;color:var(--muted);font-size:.7rem}
+@media(max-width:520px){.dns-route-hop{grid-template-columns:55px minmax(0,1fr);}.dns-route-hop span{grid-column:2;text-align:left}.dns-route-hop small{grid-column:2}}
