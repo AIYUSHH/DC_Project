@@ -480,6 +480,56 @@ regMod({
           },
         },
         {
+          label: 'Traceroute map',
+          render(p) {
+            p.innerHTML = panel(
+              'Trace the actual route from your computer',
+              '<div class="controls"><div class="field grow"><label for="route-target">Destination hostname or IP</label><input id="route-target" value="google.com" spellcheck="false" autocomplete="off" placeholder="example.com"></div><div class="field"><label for="route-max-hops">Maximum hops</label><select id="route-max-hops"><option value="20">20</option></select></div></div><div class="btnrow"><button class="btn" id="route-run" type="button">Trace route</button><span class="hint" id="route-status" role="status">Requires the optional BitSecure Python helper running on this computer.</span></div><p class="hint">This runs the operating system traceroute from your computer. It may take up to 35 seconds. Some routers do not reply to traceroute probes.</p>',
+              'Unlike the DNS map, this visualizes packet-path hops reported by your own computer. It does not infer missing hops.'
+            )+'<div id="route-results"></div>';
+            const escRoute = value => String(value ?? '').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const isPublic = ip => {
+              try {
+                if(ip.includes(':'))return !/^(::1|::|fc|fd|fe80|ff)/i.test(ip);
+                const a=ip.split('.').map(Number);
+                if(a.length!==4||a.some(x=>!Number.isInteger(x)||x<0||x>255))return false;
+                const [x,y]=a;
+                return !(x===0||x===10||x===127||x>=224||(x===169&&y===254)||(x===172&&y>=16&&y<=31)||(x===192&&y===168)||(x===100&&y>=64&&y<=127));
+              } catch{return false;}
+            };
+            const run=$('#route-run',p),status=$('#route-status',p),results=$('#route-results',p);
+            run.onclick=async()=>{
+              const target=$('#route-target',p).value.trim();
+              if(!target){status.textContent='Enter a destination hostname or IP.';return;}
+              run.disabled=true;status.textContent='Running traceroute on this computer…';
+              results.innerHTML='<div class="dns-live-loading">Collecting route hops from your operating system…</div>';
+              try{
+                const response=await fetch('http://127.0.0.1:8765/api/traceroute?target='+encodeURIComponent(target),{headers:{Accept:'application/json'},cache:'no-store'});
+                const data=await response.json();
+                if(!response.ok||!data.ok)throw new Error(data.error||'The local helper could not trace this destination.');
+                const hops=Array.isArray(data.hops)?data.hops:[];
+                if(!hops.length)throw new Error('The operating system returned no traceroute hops.');
+                status.textContent='Received '+hops.length+' hops · '+(data.complete?'destination reached':'destination not confirmed');
+                const publicHops=hops.filter(h=>h.ip&&isPublic(h.ip));
+                const unique=[...new Map(publicHops.map(h=>[h.ip,h])).values()];
+                results.innerHTML='<section class="dns-live-section"><h3>Route map</h3><p class="dns-live-meta">Only responding public IP hops can be geolocated. Locations are approximate; private hops and timeouts remain in the hop list.</p><div id="route-map" class="dns-route-map"><svg viewBox="0 0 1000 500" role="img" aria-label="World map of traceroute hops"><rect width="1000" height="500" fill="#102039"/><g stroke="#526783" opacity=".45"><path d="M0 125H1000M0 250H1000M0 375H1000M200 0V500M400 0V500M600 0V500M800 0V500"/></g><g fill="#6d829b" stroke="#9aacc0" stroke-width="2"><path d="M75 105L105 65 170 48 218 70 250 108 232 142 208 154 196 194 165 218 145 190 120 175 105 142Z"/><path d="M230 225L260 238 276 278 267 325 248 378 229 420 212 386 215 340 197 300Z"/><path d="M405 100L440 72 492 66 522 85 555 78 587 98 610 123 596 153 563 163 546 194 520 190 502 164 473 160 450 135Z"/><path d="M490 205L525 187 566 198 586 235 578 280 555 329 529 367 505 339 492 294Z"/><path d="M585 95L642 62 714 68 760 94 824 85 892 112 927 151 901 184 850 179 824 208 778 194 749 225 710 203 676 183 640 168 608 143Z"/><path d="M805 300L850 281 892 295 916 324 900 354 864 367 830 348Z"/></g><g id="route-map-lines"></g><g id="route-map-pins"></g></svg><div class="dns-route-map-caption">Geolocating responding public hops…</div></div><div class="dns-route-hop-list" id="route-hop-list"></div></section>';
+                const geo=await Promise.all(unique.map(async hop=>{try{const r=await fetch('https://ipwho.is/'+encodeURIComponent(hop.ip));const g=await r.json();return g.success&&Number.isFinite(Number(g.latitude))&&Number.isFinite(Number(g.longitude))?{ip:hop.ip,lat:Number(g.latitude),lon:Number(g.longitude),city:g.city,country:g.country}:null;}catch{return null;}}));
+                const located=geo.filter(Boolean);
+                const project=(lat,lon)=>({x:(lon+180)/360*1000,y:(90-lat)/180*500});
+                const points=located.map(g=>({...g,...project(g.lat,g.lon)}));
+                const line=points.map(pt=>pt.x.toFixed(1)+','+pt.y.toFixed(1)).join(' ');
+                $('#route-map-lines',results).innerHTML=points.length>1?'<polyline points="'+line+'" fill="none" stroke="#38bdf8" stroke-width="3" stroke-dasharray="7 6"/>':'';
+                $('#route-map-pins',results).innerHTML=points.map((pt,i)=>'<g><title>Hop '+(i+1)+' · '+escRoute(pt.ip)+' · '+escRoute([pt.city,pt.country].filter(Boolean).join(', '))+'</title><circle cx="'+pt.x+'" cy="'+pt.y+'" r="12" fill="#38bdf8" opacity=".25"/><circle cx="'+pt.x+'" cy="'+pt.y+'" r="5" fill="#38bdf8" stroke="#102039" stroke-width="2"/><text x="'+(pt.x+9)+'" y="'+(pt.y-9)+'" fill="white" font-size="13">'+(i+1)+'</text></g>').join('');
+                $('.dns-route-map-caption',results).textContent=located.length+' of '+unique.length+' unique public hop IPs geolocated. The line connects geolocated hops in observed route order; it is not the exact physical cable path.';
+                $('#route-hop-list',results).innerHTML=hops.map(h=>'<div class="dns-route-hop"><b>Hop '+h.hop+'</b><code>'+escRoute(h.ip||'* * * (no reply)')+'</code><span>'+(h.rtt_ms===null?'—':escRoute(h.rtt_ms)+' ms')+'</span><small>'+(h.ip&&!isPublic(h.ip)?'Private / non-public hop':h.ip?'Public IP · approximate location may be available':'Router did not respond')+'</small></div>').join('');
+              }catch(error){
+                results.innerHTML='<div class="dns-live-section"><b>Traceroute unavailable</b><p>'+escRoute(error.message)+'</p><p class="dns-live-meta">Start network_agent.py in a terminal and keep it running. On Linux, install the traceroute utility if the helper requests it.</p></div>';
+                status.textContent='Traceroute failed.';
+              }finally{run.disabled=false;}
+            };
+          },
+        },
+        {
           label: 'Record types',
           render(p) {
             p.innerHTML = panel(
