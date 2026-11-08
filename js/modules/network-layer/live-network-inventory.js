@@ -63,12 +63,28 @@ regMod({
             <p>Inspect the IP configuration and network state reported by this device.</p>
           </div>
           <div class="lni-actions">
-            <button class="btn" id="lni-refresh" type="button">↻ Refresh live data</button>
+            <button class="btn" id="lni-refresh" type="button" hidden>↻ Refresh device inventory</button>
             <button class="btn ghost sm" id="lni-auto" type="button" aria-pressed="false">Auto refresh: Off</button>
           </div>
         </header>
         <div class="lni-status" id="lni-status" role="status" aria-live="polite"><i></i><span id="lni-status-text">Waiting for local network helper</span><small id="lni-source">No data loaded</small></div>
-        <section class="lni-welcome" id="lni-welcome">
+        <section class="panel lni-browser-panel" aria-labelledby="lni-browser-title">
+          <div class="lni-section-title"><div><small>NO INSTALLATION REQUIRED</small><h3 id="lni-browser-title">Live browser connection</h3><p>Information your browser can report right now. This is not a full operating-system inventory.</p></div><span class="lni-tag">BROWSER MODE</span></div>
+          <div class="lni-browser-grid">
+            <div class="lni-browser-stat"><small>INTERNET STATUS</small><strong id="lni-online">Checking…</strong><span id="lni-online-detail">Browser connectivity state</span></div>
+            <div class="lni-browser-stat"><small>NETWORK TYPE</small><strong id="lni-net-type">Not exposed</strong><span id="lni-net-type-detail">Browser support varies</span></div>
+            <div class="lni-browser-stat"><small>ESTIMATED DOWNLINK</small><strong id="lni-downlink">Not exposed</strong><span id="lni-rtt">RTT: not exposed</span></div>
+          </div>
+          <div class="lni-public-ip">
+            <div><b>Public IP address</b><p>Optional lookup. Your public IP will be sent to the external service ipify to return the result.</p><strong id="lni-public-ip-value">Not checked</strong></div>
+            <button class="btn ghost sm" type="button" id="lni-public-ip-check">Check public IP</button>
+          </div>
+          <div class="lni-browser-actions">
+            <button class="btn sm" type="button" id="lni-connect-agent">Connect for detailed device inventory</button>
+            <span>No installation is needed to use browser mode.</span>
+          </div>
+        </section>
+        <section class="lni-welcome" id="lni-welcome" hidden>
           <div class="lni-welcome-icon">⌘</div><div>
             <span class="lni-agent-label" id="lni-agent-label">LIVE CONNECTION NOT STARTED</span>
             <h3 id="lni-welcome-title">Connect to this device</h3>
@@ -119,6 +135,30 @@ regMod({
     const tableEmpty=msg=>'<p class="lni-empty">'+safe(msg)+'</p>';
     const setTab=tab=>{activeTab=tab;root.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));root.querySelectorAll('.lni-view').forEach(v=>v.hidden=v.id!=='lni-view-'+tab);};
     const copyValue=async(value,button)=>{try{await navigator.clipboard.writeText(value);button.textContent='Copied ✓';}catch{button.textContent=value;}};
+    function renderBrowserStatus(){
+      const online=navigator.onLine;
+      el('#lni-online').textContent=online?'Online':'Offline';
+      el('#lni-online-detail').textContent=online?'Browser reports network connectivity':'Browser reports no network connection';
+      const conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+      el('#lni-net-type').textContent=conn?.effectiveType||'Not exposed';
+      el('#lni-net-type-detail').textContent=conn?.type?('Connection: '+conn.type):'Effective type, when supported';
+      el('#lni-downlink').textContent=Number.isFinite(conn?.downlink)?conn.downlink+' Mbps':'Not exposed';
+      el('#lni-rtt').textContent=Number.isFinite(conn?.rtt)?'Estimated RTT: '+conn.rtt+' ms':'RTT: not exposed';
+      status(online?'Browser reports an active network connection':'Browser reports that this device is offline',online?'ok':'error');
+      el('#lni-source').textContent='Browser API · '+new Date().toLocaleTimeString();
+    }
+    async function checkPublicIp(){
+      const button=el('#lni-public-ip-check'), output=el('#lni-public-ip-value');
+      button.disabled=true;output.textContent='Checking…';
+      try{
+        const response=await fetch('https://api.ipify.org?format=json',{cache:'no-store'});
+        if(!response.ok)throw new Error('Lookup failed');
+        const data=await response.json();
+        if(!data.ip)throw new Error('No IP returned');
+        output.textContent=data.ip;
+      }catch{output.textContent='Could not retrieve public IP. Check your connection or try again.';}
+      finally{button.disabled=false;}
+    }
 
     function render(data) {
       snapshot=data; el('#lni-welcome').hidden=true;el('#lni-dashboard').hidden=false;
@@ -161,6 +201,12 @@ regMod({
       const copy=event.target.closest('[data-copy]');if(copy)copyValue(copy.dataset.copy,copy);
     });
     el('#lni-refresh').addEventListener('click',refresh);
+    el('#lni-connect-agent').addEventListener('click',showConsent);
+    el('#lni-public-ip-check').addEventListener('click',checkPublicIp);
+    window.addEventListener('online',renderBrowserStatus);
+    window.addEventListener('offline',renderBrowserStatus);
+    const browserConnection=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+    browserConnection?.addEventListener?.('change',renderBrowserStatus);
     el('#lni-retry').addEventListener('click',refresh);
     el('#lni-demo').addEventListener('click',renderDemo);
     const consentKey='bitsecure-live-inventory-consent-v1';
@@ -170,18 +216,20 @@ regMod({
     el('#lni-allow').addEventListener('click',()=>{
       try{localStorage.setItem(consentKey,'granted');}catch{}
       closeConsent();
+      el('#lni-refresh').hidden=false;
       refresh();
     });
     el('#lni-deny').addEventListener('click',()=>{
       try{localStorage.setItem(consentKey,'denied');}catch{}
       closeConsent();
-      status('Access not granted · demo mode is still available','');
-      el('#lni-welcome').hidden=false;
+      status('Browser-only mode active · no local device access','ok');
+      el('#lni-welcome').hidden=true;
     });
-    if(consent()) refresh(); else showConsent();
+    renderBrowserStatus();
+    if(consent()){el('#lni-refresh').hidden=false;refresh();}
     el('#lni-copy').addEventListener('click',e=>copyValue('python3 tools/network-agent/network_agent.py',e.currentTarget));
     el('#lni-auto').addEventListener('click',e=>{if(e.currentTarget.disabled)return;if(autoTimer){stopAutoRefresh();e.currentTarget.disabled=false;}else{autoTimer=setInterval(()=>{if(!document.hidden&&!demoMode)refresh();},10000);e.currentTarget.textContent='Auto refresh: 10s';e.currentTarget.setAttribute('aria-pressed','true');}});
     el('#lni-filter').addEventListener('input',e=>{neighbourQuery=e.target.value;renderNeighbours();});
-    return()=>{controller?.abort();if(autoTimer)clearInterval(autoTimer);};
+    return()=>{controller?.abort();if(autoTimer)clearInterval(autoTimer);window.removeEventListener('online',renderBrowserStatus);window.removeEventListener('offline',renderBrowserStatus);browserConnection?.removeEventListener?.('change',renderBrowserStatus);};
   }
 });
