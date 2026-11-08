@@ -34,6 +34,7 @@ import { $, esc } from '../core/utils.js';
 import { CORE, GROUPS, modById } from '../modules/registry.js';
 import { crumbs, setStage } from './navigation.js';
 import { renderDaily, renderHome, renderProfile, renderZone } from '../game/screens.js';
+import { renderLeague } from '../game/league-screen.js';
 import { renderFlow } from '../game/flow.js';
 import { ZONES } from '../game/data.js';
 import { checkMeta, updatePill, visitXp } from '../game/store.js';
@@ -105,6 +106,12 @@ export function route() {
     crumbs(['Map', ZONES.find(z => z.id === arg).name]);
     document.title = 'BitSecure';
     renderZone(arg);
+  } else if (kind === 'league') {
+    currentKey = 'league';
+    setStage('dash');
+    crumbs(['Weekly competition']);
+    document.title = 'Weekly competition · BitSecure';
+    void renderLeague();
   } else if (kind === 'profile' || kind === 'daily') {
     currentKey = kind;
     setStage('dash');
