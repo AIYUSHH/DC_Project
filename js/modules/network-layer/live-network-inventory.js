@@ -212,7 +212,10 @@ regMod({
     el('#lni-demo').addEventListener('click',renderDemo);
     const consentKey='bitsecure-live-inventory-consent-v1';
     const consent=()=>{try{return localStorage.getItem(consentKey)==='granted';}catch{return false;}};
-    const showConsent=()=>{el('#lni-consent').hidden=false;el('#lni-allow').focus();};
+    function showConsent() {
+      el('#lni-consent').hidden = false;
+      el('#lni-allow').focus();
+    }
     const closeConsent=()=>{el('#lni-consent').hidden=true;};
     el('#lni-allow').addEventListener('click',()=>{
       try{localStorage.setItem(consentKey,'granted');}catch{}
