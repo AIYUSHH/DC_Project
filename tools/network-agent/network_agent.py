@@ -90,19 +90,28 @@ def linux_inventory() -> dict:
 
 
 def windows_inventory() -> dict:
-    # PowerShell is used only for read-only OS cmdlets; no shell interpolation is used.
+    """Collect Windows adapters, assigned addresses, default routes and useful ARP entries."""
     ps = shutil.which("powershell") or shutil.which("pwsh")
     interfaces = []
     routes = []
     neighbours = []
+
     if ps:
+        # Query adapters and addresses separately. Get-NetIPConfiguration can omit
+        # interfaces and nested pipeline output can be shape-sensitive in JSON.
         script = (
-            "$ErrorActionPreference='SilentlyContinue'; "
-            "Get-NetIPConfiguration | ForEach-Object { "
-            "[pscustomobject]@{name=$_.InterfaceAlias; "
-            "ipv4=@($_.IPv4Address | ForEach-Object {$_.IPAddress}); "
-            "ipv6=@($_.IPv6Address | ForEach-Object {$_.IPAddress}); "
-            "gateway=@($_.IPv4DefaultGateway | ForEach-Object {$_.NextHop})} } | ConvertTo-Json -Compress"
+            "$ErrorActionPreference='Stop'; "
+            "$rows = @(Get-NetAdapter -IncludeHidden | ForEach-Object { "
+            "$adapter = $_; "
+            "$ips = @(Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -ErrorAction SilentlyContinue | "
+            "Where-Object { $_.AddressState -ne 'Invalid' } | "
+            "ForEach-Object { [pscustomobject]@{family=$(if ($_.AddressFamily -eq 'IPv4') {'inet'} else {'inet6'}); "
+            "address=$_.IPAddress; prefix=$_.PrefixLength} }); "
+            "$gws = @(Get-NetRoute -InterfaceIndex $adapter.ifIndex -DestinationPrefix '0.0.0.0/0' "
+            "-ErrorAction SilentlyContinue | Select-Object -ExpandProperty NextHop -Unique); "
+            "[pscustomobject]@{name=$adapter.Name; state=$adapter.Status; mac=$adapter.MacAddress; "
+            "addresses=$ips; gateway=$gws} "
+            "}); ConvertTo-Json -InputObject $rows -Depth 6 -Compress"
         )
         raw = run_command(ps, "-NoProfile", "-Command", script)
         if raw:
@@ -111,31 +120,52 @@ def windows_inventory() -> dict:
                 if isinstance(data, dict):
                     data = [data]
                 for item in data:
-                    ipv4 = item.get("ipv4") or []
-                    ipv6 = item.get("ipv6") or []
+                    raw_addresses = item.get("addresses") or []
+                    if isinstance(raw_addresses, dict):
+                        raw_addresses = [raw_addresses]
+                    addresses = [
+                        {"family": a.get("family"), "address": a.get("address"), "prefix": a.get("prefix")}
+                        for a in raw_addresses if a.get("address")
+                    ]
                     gateways = item.get("gateway") or []
-                    ipv4 = [ipv4] if isinstance(ipv4, str) else ipv4
-                    ipv6 = [ipv6] if isinstance(ipv6, str) else ipv6
-                    gateways = [gateways] if isinstance(gateways, str) else gateways
-                    addresses = [{"family": "inet", "address": x, "prefix": None} for x in ipv4]
-                    addresses += [{"family": "inet6", "address": x, "prefix": None} for x in ipv6]
-                    interfaces.append({"name": item.get("name"), "state": "OS reported", "mac": None, "addresses": addresses})
+                    if isinstance(gateways, str):
+                        gateways = [gateways]
+                    interfaces.append({
+                        "name": item.get("name"),
+                        "state": item.get("state") or "unknown",
+                        "mac": item.get("mac"),
+                        "addresses": addresses,
+                    })
                     for gateway in gateways:
-                        routes.append({"destination": "default", "gateway": gateway, "interface": item.get("name")})
+                        if gateway and gateway != "0.0.0.0":
+                            routes.append({
+                                "destination": "default",
+                                "gateway": gateway,
+                                "interface": item.get("name"),
+                            })
             except (ValueError, TypeError):
                 pass
-        raw = run_command(ps, "-NoProfile", "-Command",
-                          "Get-NetNeighbor -AddressFamily IPv4 | Select-Object IPAddress,LinkLayerAddress,InterfaceAlias,State | ConvertTo-Json -Compress")
+
+        raw = run_command(
+            ps, "-NoProfile", "-Command",
+            "Get-NetNeighbor -AddressFamily IPv4 | "
+            "Select-Object IPAddress,LinkLayerAddress,InterfaceAlias,State | ConvertTo-Json -Compress"
+        )
         if raw:
             try:
                 data = json.loads(raw)
                 if isinstance(data, dict):
                     data = [data]
                 for item in data:
-                    neighbours.append({"address": item.get("IPAddress"), "mac": item.get("LinkLayerAddress"),
-                                       "interface": item.get("InterfaceAlias"), "state": item.get("State")})
+                    neighbours.append({
+                        "address": item.get("IPAddress"),
+                        "mac": item.get("LinkLayerAddress"),
+                        "interface": item.get("InterfaceAlias"),
+                        "state": item.get("State"),
+                    })
             except (ValueError, TypeError):
                 pass
+
     wifi_text = run_command("netsh", "wlan", "show", "interfaces")
     wifi = []
     current = {}
@@ -146,9 +176,75 @@ def windows_inventory() -> dict:
         if key.lower() in ("ssid", "signal", "name", "state"):
             current[key.lower()] = value
     if current:
-        wifi.append({"ssid": current.get("ssid"), "signal_percent": current.get("signal"),
-                     "interface": current.get("name"), "state": current.get("state")})
-    return {"interfaces": interfaces, "default_routes": routes, "neighbours": neighbours, "wifi": wifi}
+        wifi.append({
+            "ssid": current.get("ssid"),
+            "signal_percent": current.get("signal"),
+            "interface": current.get("name"),
+            "state": current.get("state"),
+        })
+    return {
+        "interfaces": interfaces,
+        "default_routes": routes,
+        "neighbours": filter_neighbours(neighbours, interfaces),
+        "wifi": wifi,
+    }
+
+
+def filter_neighbours(entries: list, interfaces: list) -> list:
+    """Remove multicast, broadcast, loopback and unusable cache entries.
+
+    Keep the interface in the deduplication key: the same peer can legitimately
+    appear on different network adapters.
+    """
+    networks = []
+    for interface in interfaces:
+        for address in interface.get("addresses", []):
+            try:
+                ip = ipaddress.ip_address(address.get("address", ""))
+                prefix = address.get("prefix")
+                if prefix is not None:
+                    networks.append(ipaddress.ip_interface(f"{ip}/{int(prefix)}").network)
+            except (ValueError, TypeError):
+                continue
+
+    cleaned = []
+    seen = set()
+    for item in entries:
+        try:
+            ip = ipaddress.ip_address(str(item.get("address") or "").split("%", 1)[0])
+        except ValueError:
+            continue
+        if ip.is_multicast or ip.is_unspecified or ip.is_loopback or ip.is_link_local:
+            continue
+        if isinstance(ip, ipaddress.IPv4Address):
+            if ip == ipaddress.IPv4Address("255.255.255.255"):
+                continue
+            if any(ip in network and ip == network.broadcast_address for network in networks
+                   if isinstance(network, ipaddress.IPv4Network) and network.prefixlen < 31):
+                continue
+
+        mac = str(item.get("mac") or "").strip().replace("-", ":").lower()
+        octets = mac.split(":")
+        if len(octets) != 6:
+            continue
+        try:
+            first_octet = int(octets[0], 16)
+            if any(len(part) != 2 for part in octets) or any(int(part, 16) > 255 for part in octets):
+                continue
+        except ValueError:
+            continue
+        if first_octet & 1 or mac == "ff:ff:ff:ff:ff:ff" or mac == "00:00:00:00:00:00":
+            continue
+
+        state = str(item.get("state") or "").lower()
+        if state in ("incomplete", "unreachable", "invalid"):
+            continue
+        key = (str(ip), mac, str(item.get("interface") or ""))
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append({**item, "address": str(ip), "mac": mac.upper()})
+    return cleaned
 
 
 
