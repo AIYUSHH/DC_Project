@@ -69,10 +69,21 @@ regMod({
         </header>
         <div class="lni-status" id="lni-status" role="status" aria-live="polite"><i></i><span id="lni-status-text">Waiting for local network helper</span><small id="lni-source">No data loaded</small></div>
         <section class="lni-welcome" id="lni-welcome">
-          <div class="lni-welcome-icon">⌘</div><div><h3>Connect to this device</h3>
-            <p>A browser cannot directly read private interface addresses, routing tables or the ARP cache. Start the optional local helper to see real OS data.</p>
-            <div class="lni-command"><code>python3 tools/network-agent/network_agent.py</code><button type="button" id="lni-copy">Copy</button></div>
-            <div class="lni-welcome-actions"><button class="btn ghost sm" id="lni-demo" type="button">Explore interactive demo</button><span>Demo values are examples, not your device's data.</span></div>
+          <div class="lni-welcome-icon">⌘</div><div>
+            <span class="lni-agent-label" id="lni-agent-label">LIVE CONNECTION NOT STARTED</span>
+            <h3 id="lni-welcome-title">Connect to this device</h3>
+            <p id="lni-welcome-copy">To show real information, BitSecure needs its small local companion app. It reads this computer’s network configuration and returns it only to this browser.</p>
+            <div class="lni-agent-steps" id="lni-agent-steps">
+              <b>Start the helper on this computer</b>
+              <p>Open a terminal in the BitSecure project folder and run:</p>
+              <div class="lni-command"><code id="lni-command-text">python3 tools/network-agent/network_agent.py</code><button type="button" id="lni-copy">Copy</button></div>
+              <small>Keep the terminal open, then select “Try connection again”. Windows users can run <code>py tools/network-agent/network_agent.py</code>.</small>
+            </div>
+            <div class="lni-welcome-actions">
+              <button class="btn sm" id="lni-retry" type="button">Try connection again</button>
+              <button class="btn ghost sm" id="lni-demo" type="button">Explore demo instead</button>
+            </div>
+            <p class="lni-demo-disclaimer">Demo data is fictional and is never presented as information from your device.</p>
           </div>
         </section>
         <div id="lni-dashboard" hidden>
@@ -133,12 +144,13 @@ regMod({
     }
     function renderRoutes(){el('#lni-route-list').innerHTML=snapshot.default_routes.length?snapshot.default_routes.map((r,i)=>'<article class="lni-route"><span>'+(i+1)+'</span><div><small>DESTINATION</small><b>'+safe(r.destination||'default')+'</b></div><i>→</i><div><small>GATEWAY</small><b>'+safe(r.gateway||'Direct / unspecified')+'</b></div><i>→</i><div><small>INTERFACE</small><b>'+safe(r.interface)+'</b></div></article>').join(''):tableEmpty('No default routes reported.');}
     function renderNeighbours(){if(!snapshot)return;const q=neighbourQuery.toLowerCase();const list=snapshot.neighbours.filter(n=>[n.address,n.mac,n.interface,n.state].some(v=>String(v||'').toLowerCase().includes(q)));el('#lni-neighbour-list').innerHTML=list.length?list.map(n=>'<article class="lni-peer-card"><b>'+safe(n.address)+'</b><code>'+safe(n.mac)+'</code><small>'+safe(n.interface)+' · '+safe(n.state)+'</small><button type="button" data-copy="'+safe(n.address)+'">Copy IP</button></article>').join(''):tableEmpty('No neighbours match this filter.');}
-    function renderDemo(){demoMode=true;render({...sample,collected_at:new Date().toISOString()});status('Interactive sample loaded','demo');el('#lni-source').textContent='SAMPLE DATA';}
+    function renderDemo(){demoMode=true;stopAutoRefresh();render({...sample,collected_at:new Date().toISOString()});status('Interactive sample loaded','demo');el('#lni-source').textContent='SAMPLE DATA';el('#lni-agent-label').textContent='DEMO MODE';}
+    function stopAutoRefresh(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}const b=el('#lni-auto');b.textContent='Auto refresh: Off';b.setAttribute('aria-pressed','false');b.disabled=true;}
     async function refresh(){
       if(!consent()){showConsent();return;}
-      if(refreshBusy)return;refreshBusy=true;controller?.abort();controller=new AbortController();el('#lni-refresh').disabled=true;demoMode=false;status('Reading this device’s network configuration…','loading');
-      try{const response=await fetch(ENDPOINT,{cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(!data.ok)throw new Error(data.error||'Agent error');render(data);status('Connected · '+data.platform+' · live OS data','ok');el('#lni-source').textContent='Updated '+new Date(data.collected_at||Date.now()).toLocaleTimeString();}
-      catch(error){if(error.name==='AbortError')return;status('BitSecure could not connect to the local helper.','error');if(!snapshot){el('#lni-welcome').hidden=false;el('#lni-welcome').querySelector('h3').textContent='One more step: start the BitSecure Network Agent';el('#lni-welcome').querySelector('p').textContent='Your permission is saved, but the local agent is not running. The agent is a small companion app that reads network details on this computer. It must be installed and started once; a website cannot launch it by itself.';}}
+      if(refreshBusy)return;refreshBusy=true;controller?.abort();controller=new AbortController();el('#lni-refresh').disabled=true;demoMode=false;status('Checking for the BitSecure Network Agent…','loading');
+      try{const response=await fetch(ENDPOINT,{cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(!data.ok)throw new Error(data.error||'Agent error');render(data);status('Connected · '+data.platform+' · live OS data','ok');el('#lni-source').textContent='Updated '+new Date(data.collected_at||Date.now()).toLocaleTimeString();el('#lni-agent-label').textContent='LIVE DEVICE DATA';el('#lni-auto').disabled=false;}
+      catch(error){if(error.name==='AbortError')return;stopAutoRefresh();snapshot=null;demoMode=false;el('#lni-dashboard').hidden=true;el('#lni-welcome').hidden=false;el('#lni-source').textContent='NO LIVE DATA';el('#lni-agent-label').textContent='LIVE CONNECTION NOT AVAILABLE';el('#lni-welcome-title').textContent='BitSecure Network Agent not detected';el('#lni-welcome-copy').textContent='Your permission is saved, but no local agent responded. This website cannot start or install a program on your computer. Start the helper below, then try again.';status('No live data · local helper not detected','error');}
       finally{refreshBusy=false;el('#lni-refresh').disabled=false;}
     }
     root.addEventListener('click',event=>{
@@ -149,6 +161,7 @@ regMod({
       const copy=event.target.closest('[data-copy]');if(copy)copyValue(copy.dataset.copy,copy);
     });
     el('#lni-refresh').addEventListener('click',refresh);
+    el('#lni-retry').addEventListener('click',refresh);
     el('#lni-demo').addEventListener('click',renderDemo);
     const consentKey='bitsecure-live-inventory-consent-v1';
     const consent=()=>{try{return localStorage.getItem(consentKey)==='granted';}catch{return false;}};
@@ -167,7 +180,7 @@ regMod({
     });
     if(consent()) refresh(); else showConsent();
     el('#lni-copy').addEventListener('click',e=>copyValue('python3 tools/network-agent/network_agent.py',e.currentTarget));
-    el('#lni-auto').addEventListener('click',e=>{if(autoTimer){clearInterval(autoTimer);autoTimer=null;e.currentTarget.textContent='Auto refresh: Off';e.currentTarget.setAttribute('aria-pressed','false');}else{autoTimer=setInterval(()=>{if(!document.hidden&&!demoMode)refresh();},10000);e.currentTarget.textContent='Auto refresh: 10s';e.currentTarget.setAttribute('aria-pressed','true');refresh();}});
+    el('#lni-auto').addEventListener('click',e=>{if(e.currentTarget.disabled)return;if(autoTimer){stopAutoRefresh();e.currentTarget.disabled=false;}else{autoTimer=setInterval(()=>{if(!document.hidden&&!demoMode)refresh();},10000);e.currentTarget.textContent='Auto refresh: 10s';e.currentTarget.setAttribute('aria-pressed','true');}});
     el('#lni-filter').addEventListener('input',e=>{neighbourQuery=e.target.value;renderNeighbours();});
     return()=>{controller?.abort();if(autoTimer)clearInterval(autoTimer);};
   }
