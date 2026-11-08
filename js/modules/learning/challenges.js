@@ -339,12 +339,28 @@ const QBANK = [
   ],
 ];
 
+const LEVELS = ['Beginner','Intermediate','Advanced','Expert','Master'];
+const LEVEL_BANKS = {
+2: [['Subnetting','A /27 subnet is carved from a /24. How many /27 subnets fit?',['4','8','16','32'],1,'Three extra network bits give 2^3 = 8 subnets.','Compare prefix lengths.'],['TCP','A 12,000-byte congestion window uses 1,200-byte MSS. How many full segments fit?',['8','9','10','12'],2,'12,000 / 1,200 = 10 segments.','Divide window by MSS.'],['Routing','Routes /8, /16 and /21 match 10.4.9.7. Which wins?',['/8','/16','/21','None'],2,'The /21 is the most specific matching route.','Use longest-prefix matching.'],['DNS','A 900-second TTL was cached 240 seconds ago. How long remains?',['240 s','660 s','900 s','1,140 s'],1,'900 − 240 = 660 seconds remain.','Subtract elapsed time.'],['Errors','A CRC generator has degree 4. How many zero bits are appended?',['2','3','4','5'],2,'CRC appends r zeros where r is the generator degree.','Use polynomial degree.'],['HTTP','Repeating the same PUT request should be…',['Non-repeatable','Idempotent','A GET','A new resource each time'],1,'PUT is idempotent: repetition has the same intended effect.','Think about repeating an operation.']],
+3: [['Subnetting','You need at least 50 usable hosts. Which smallest prefix works?',['/25','/26','/27','/28'],1,'/26 provides 62 usable addresses; /27 provides 30.','Find the smallest host-bit count.'],['TCP','A flow has 24 MSS in flight. After timeout, what is the usual new ssthresh?',['6 MSS','8 MSS','12 MSS','16 MSS'],2,'ssthresh is commonly half the flight size: 12 MSS.','Use half the flight size.'],['IP','A 4,000-byte IPv4 datagram crosses a 1,500-byte MTU with a 20-byte header. How many fragments?',['2','3','4','5'],1,'Each full fragment carries 1,480 data bytes; ceil(3,980 / 1,480) = 3.','Remove header, then round up.'],['ARQ','Selective Repeat uses 5-bit sequence numbers. Maximum sender window?',['15','16','31','32'],1,'Sequence space is 32; maximum window is half, or 16.','Use half the sequence space.'],['Routing','Which algorithm computes shortest paths in link-state routing?',['Bellman-Ford','Dijkstra','CRC division','Handshake'],1,'Link-state routers run Dijkstra over their topology database.','The router has a full topology view.'],['Performance','A 10-Mbit/s path has 80 ms RTT. What is its bandwidth-delay product?',['10 kB','50 kB','100 kB','800 kB'],2,'10,000,000 × 0.08 = 800,000 bits = 100 kB.','Multiply rate by RTT and convert bits to bytes.']],
+4: [['Errors','The CRC polynomial x^3 + x + 1 is represented by…',['1011','1101','1110','1001'],0,'Coefficients from x^3 through x^0 are 1,0,1,1.','Write coefficients highest power first.'],['Routing','What does ECMP allow when routes have equal cost?',['Always choose first','Use multiple next hops','Merge packets','Disable prefix matching'],1,'Equal-Cost Multi-Path permits multiple equal-cost next hops.','The name describes the choice.'],['TLS','TLS 1.3 application traffic keys are derived from…',['Certificate private key','Traffic secrets from handshake secrets','DNS secret','TCP sequence number'],1,'TLS derives directional traffic secrets from the handshake secret.','Separate identity keys from traffic keys.'],['Performance','A path has 2% packet loss. What is the simple delivery ratio?',['2%','50%','98%','102%'],2,'Delivery ratio is 100% − 2% = 98%.','Subtract loss from 100%.'],['Subnetting','VLSM needs 100, 50 and 20 hosts. Which block sizes fit?',['/26,/27,/28','/25,/26,/27','/24,/25,/26','/25,/25,/26'],1,'The smallest fitting blocks are /25, /26 and /27.','Round each host requirement up.'],['TCP','A sender has 10 MSS in flight and gets three duplicate ACKs. Reno ssthresh?',['3 MSS','5 MSS','8 MSS','13 MSS'],1,'Reno sets ssthresh to about half the flight size: 5 MSS.','Fast retransmit halves flight size.']],
+5: [['Network design','Six VLANs each need 90 usable hosts. Smallest aligned aggregate for six /25s?',['/24','/23','/22','/21'],2,'Six /25s need 768 addresses; the next aligned aggregate is /22.','Each VLAN needs /25.'],['TCP','A 1-Gbit/s path has 40 ms RTT. What receive window fills the path?',['500 kB','2 MB','5 MB','40 MB'],2,'1 Gbit/s × 0.04 s = 40 Mbit = 5 MB.','Use bandwidth-delay product.'],['Security','A certificate chain is valid but hostname verification is skipped. What risk remains?',['TCP retransmission','A certificate for another hostname may be accepted','DNS cache stops','Cipher becomes plaintext'],1,'Chain validation does not prove the certificate belongs to the requested hostname.','Trust chain and hostname identity are separate.'],['IP','Which IPv4 mechanism bounds packet lifetime in a routing loop?',['Window scaling','TTL decrement and expiry','DNS TTL','TCP ACK number'],1,'Routers decrement IPv4 TTL and discard at zero.','Distinguish IP TTL from DNS TTL.'],['Performance','A 200-Mbit/s link has 50 ms RTT and a 2-MB receive window. What limits throughput?',['Window at 320 Mbit/s','Link at 200 Mbit/s','RTT at 50 Mbit/s','Window at 32 Mbit/s'],1,'The window allows about 320 Mbit/s, so the link is the bottleneck.','Compare window/RTT with link rate.'],['IP','A 3,000-byte IPv4 datagram with 20-byte header crosses a 1,000-byte MTU. How many fragments?',['2','3','4','5'],2,'Each non-final fragment carries 976 bytes; 2,980 bytes require 4 fragments.','Use the largest multiple of eight below 980.']]
+};
+function tierQuestion(level) {
+  const pick=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  const make=(v,wrong)=>{const o=[String(v),...wrong.map(String)].sort(()=>Math.random()-0.5);return [o,o.indexOf(String(v))];};
+  if(level===2){const p=pick(20,29),v=2**(32-p)-2,[o,a]=make(v,[v+2,v-2,v*2]);return ['Subnetting','A /'+p+' network has how many usable IPv4 hosts?',o,a,'There are '+(32-p)+' host bits: 2^'+(32-p)+' − 2 = '+v+'.','Count host bits and reserve network and broadcast addresses.'];}
+  if(level===3){const rate=pick(20,100)*10,rtt=pick(20,100),v=Math.round(rate*1000*rtt/8/1000),[o,a]=make(v,[v/2,v+10,v*2]);return ['Performance','A '+rate+'-Mbit/s path has '+rtt+' ms RTT. What is its bandwidth-delay product in kB?',o,a,'Rate × RTT gives '+v+' kB after converting bits to bytes.','Multiply bit rate by RTT, then convert to bytes.'];}
+  if(level===4){const size=pick(3000,9000),v=Math.ceil((size-20)/1480),[o,a]=make(v,[v+1,v-1,v+2]);return ['IP','A '+size+'-byte IPv4 datagram crosses a 1,500-byte MTU. How many fragments?',o,a,'Each full fragment carries 1,480 data bytes; ceil(('+size+' − 20) / 1480) = '+v+'.','Subtract the header and round up.'];}
+  const mss=pick(900,1500),cwnd=pick(8,30),rtt=pick(10,100),link=pick(50,500),v=Math.min(link,Math.round(cwnd*mss*8/rtt/1000)),[o,a]=make(v,[Math.max(1,v-5),v+5,v*2]);return ['TCP','A flow has '+cwnd+' MSS of '+mss+' bytes, RTT '+rtt+' ms and a '+link+'-Mbit/s link. Approximate throughput in Mbit/s?',o,a,'Window/RTT gives '+Math.round(cwnd*mss*8/rtt/1000)+' Mbit/s; cap it at the link rate.','Calculate window bytes × 8 / RTT, then compare with link rate.'];
+}
 /**
  * Generates a fresh calculation question (parity bit, usable hosts, fragments, bit stuffing, TTL) with random numbers, so repeating the quiz never repeats the numbers.
  *
  * @returns {Array} a question in the same shape as QBANK entries.
  */
-function genQuestion() {
+function genQuestion(level = 1) {
+  if (level > 1) return tierQuestion(level);
   const k = Math.floor(Math.random() * 5),
     shuffle = (ans, wrong) => {
       const set = [String(ans)];
@@ -437,18 +453,12 @@ regMod({
     'Review which topics need more work.',
   ],
   mount(root) {
-    let qs = [],
-      i = 0,
-      pts = 0,
-      answered = false,
-      hinted = false,
-      res = [];
+    let qs = [], i = 0, pts = 0, answered = false, hinted = false, res = [], level = Math.max(1, Math.min(5, Number(P.stats.quizLevel) || 1));
+    const shuffle = items => { const copy=items.slice(); for(let n=copy.length-1;n>0;n--){const j=Math.floor(Math.random()*(n+1));[copy[n],copy[j]]=[copy[j],copy[n]];} return copy; };
     const start = () => {
-      const bank = QBANK.slice()
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 6),
-        gen = [genQuestion(), genQuestion()];
-      qs = [...bank, ...gen].sort(() => Math.random() - 0.5);
+      const tier = level === 1 ? QBANK : (LEVEL_BANKS[level] || QBANK);
+      const bank = shuffle(tier).slice(0, 6);
+      qs = shuffle([...bank, genQuestion(level), genQuestion(level)]);
       i = 0;
       pts = 0;
       res = [];
@@ -460,6 +470,12 @@ regMod({
           pct = Math.round((c / qs.length) * 100);
         stat('quizRuns');
         if (pct > P.stats.quizBest) setStat('quizBest', pct);
+        const passed=pct>=70, completedLevel=level, nextLevel=passed?Math.min(5,level+1):level;
+        if(nextLevel>(Number(P.stats.quizLevel)||1)) setStat('quizLevel',nextLevel);
+        if(nextLevel>(Number(P.stats.quizHighestLevel)||1)) setStat('quizHighestLevel',nextLevel);
+        level = nextLevel;
+        const history=Array.isArray(P.stats.quizHistory)?P.stats.quizHistory.slice(0,7):[];
+        history.unshift({level:completedLevel,score:pct,points:pts,ts:Date.now()}); setStat('quizHistory',history.slice(0,8));
         const tags = {};
         res.forEach(r => {
           tags[r.tag] = tags[r.tag] || [0, 0];
@@ -467,18 +483,8 @@ regMod({
           if (r.ok) tags[r.tag][0]++;
         });
         root.innerHTML = panel(
-          'Results',
-          `<div class="quizq"><p class="big">${c} of ${qs.length} correct (${pct}%)</p></div>${statRow(
-            [
-              [pts + '/' + qs.length * 2, 'points (hints cost half)'],
-              [P.stats.quizBest + '%', 'best score'],
-              [P.stats.quizRuns, 'quizzes taken'],
-            ]
-          )}${tbl(
-            ['Topic', 'Correct'],
-            Object.entries(tags).map(([t, v]) => [t, v[0] + ' of ' + v[1]])
-          )}
-          ${pct >= 80 ? vd('ok', 'Excellent.', 'You unlocked the Quiz ace achievement.') : vd('info', 'Keep going.', 'Review the modules for the topics above and try again.')}<div class="btnrow"><button class="btn" id="qagain">New quiz</button></div>`
+          'Quiz results',
+          `<div class="quizq"><small class="tagc">${LEVELS[completedLevel-1]} · Level ${completedLevel}</small><p class="big">${c} of ${qs.length} correct (${pct}%)</p><p>${passed ? (completedLevel < 5 ? 'Level passed — next level unlocked.' : 'Master level cleared — highest tier reached.') : 'Level not passed. Score at least 70% to unlock the next level.'}</p></div>${statRow([[pts + '/' + qs.length * 2, 'points (hints cost half)'],[P.stats.quizBest + '%', 'all-time best'],[P.stats.quizRuns, 'quizzes taken'],[Math.max(1,Number(P.stats.quizHighestLevel)||1)+'/5', 'highest level unlocked']])}<div class="quizq"><b>Difficulty progress</b><div class="bar"><i style="width:${(Math.max(1,Number(P.stats.quizHighestLevel)||1)/5)*100}%"></i></div><small>Next: ${LEVELS[nextLevel-1]}</small></div>${tbl(['Topic','Correct'],Object.entries(tags).map(([t,v])=>[t,v[0]+' of '+v[1]]))}${tbl(['Recent level','Score'],history.slice(0,5).map(run=>[LEVELS[Math.max(1,Math.min(5,run.level))-1],run.score+'%']))}${passed ? vd('ok','Well done.','Your performance unlocked the next step.') : vd('info','Keep practising.','Review the topic breakdown and retry this level.')}<div class="btnrow"><button class="btn" id="qagain">${passed && completedLevel < 5 ? 'Start next level' : 'Retry level'}</button></div>`
         );
         $('#qagain', root).onclick = start;
         return;
@@ -488,7 +494,7 @@ regMod({
       hinted = false;
       root.innerHTML = panel(
         `Question ${i + 1} of ${qs.length}`,
-        `<div class="bar"><i style="width:${(i / qs.length) * 100}%"></i></div><div class="quizq"><small class="tagc">${q[0]}</small><p class="big">${esc(q[1])}</p></div>
+        `<div class="quizq"><small class="tagc">Level ${level} · ${esc(LEVELS[level-1])} · Question ${i+1}/${qs.length}</small><div class="bar"><i style="width:${(i / qs.length) * 100}%"></i></div><small class="tagc">${q[0]}</small><p class="big">${esc(q[1])}</p></div>
         <div class="opts" id="qo">${q[2].map((o, k) => `<button class="opt" data-k="${k}"><span>${'ABCD'[k]}</span>${esc(o)}</button>`).join('')}</div><div id="qfb"></div>
         <div class="btnrow"><button class="btn ghost sm" id="qh">Show hint</button><button class="btn ghost sm" id="qs">Skip</button></div>`
       );
