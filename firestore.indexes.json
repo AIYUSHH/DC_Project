@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "batches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tier", "order": "ASCENDING" },
+        { "fieldPath": "memberCount", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
