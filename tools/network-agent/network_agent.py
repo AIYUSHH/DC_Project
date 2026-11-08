@@ -8,12 +8,9 @@ Requires Python 3.9+. Run: python network_agent.py
 from __future__ import annotations
 
 import json
-import os
 import platform
-import shlex
 import shutil
 import subprocess
-import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -199,59 +196,8 @@ class Handler(BaseHTTPRequestHandler):
         print("[BitSecure agent] " + (fmt % args))
 
 
-def executable_command() -> list[str]:
-    """Return a command that re-launches this program in server mode."""
-    if getattr(sys, "frozen", False):
-        return [sys.executable, "--serve"]
-    return [sys.executable, os.path.abspath(__file__), "--serve"]
-
-
-def launch_linux_terminal() -> bool:
-    """Open a visible terminal when launched from a Linux desktop file manager."""
-    command = executable_command()
-    terminal_candidates = [
-        ("x-terminal-emulator", ["-e", *command]),
-        ("gnome-terminal", ["--wait", "--", *command]),
-        ("konsole", ["--hold", "-e", *command]),
-        ("xfce4-terminal", ["--hold", "--command", shlex.join(command)]),
-        ("xterm", ["-hold", "-e", *command]),
-    ]
-    for executable, arguments in terminal_candidates:
-        terminal = shutil.which(executable)
-        if terminal:
-            try:
-                subprocess.Popen([terminal, *arguments], start_new_session=True)
-                return True
-            except OSError:
-                continue
-    return False
-
-
-def serve() -> None:
-    print()
-    print("  BITSECURE · LOCAL NETWORK AGENT")
-    print("  --------------------------------")
-    print(f"  Local API: http://{HOST}:{PORT}/api/network")
-    print("  Scope: this computer only (127.0.0.1)")
-    print("  Mode: read-only; no LAN scan or configuration changes")
-    print()
-    print("  Keep this window open while using BitSecure.")
-    print("  Close this window or press Ctrl+C to stop.")
-    print()
-    try:
-        ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
-    except OSError as exc:
-        print(f"Could not start the local agent: {exc}")
-        print("Another instance may already be running, or the port may be unavailable.")
-        input("Press Enter to close this window...")
-        raise SystemExit(1)
-
 
 if __name__ == "__main__":
-    if platform.system() == "Linux" and "--serve" not in sys.argv and not sys.stdout.isatty():
-        if launch_linux_terminal():
-            raise SystemExit(0)
-        print("No supported terminal emulator was found.")
-        print("Open a terminal in this folder and run: ./network_agent-linux")
-        raise SystemExit(1)
-    serve()
+    print(f"BitSecure read-only network agent: http://{HOST}:{PORT}/api/network")
+    print("Bound to loopback only. Press Ctrl+C to stop.")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
