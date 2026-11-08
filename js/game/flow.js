@@ -10,6 +10,8 @@ import { ZONES, META } from './data.js';
 import { levelFor, medalFor, quizBadges, quizXp } from './rules.js';
 import { MEDALS, addXp, checkMeta, grant, setMedal, visitXp, xp, BADGES, updatePill } from './store.js';
 import { boom, gl } from './ui.js';
+import { awardLeagueXp } from './league-service.js';
+import { weekId } from './leagues.js';
 
 const pos = (i, n) => 8 + (i * 84) / (n - 1);
 const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
@@ -51,6 +53,8 @@ function applyResult(id, right, total, secs) {
   const before = levelFor(xp()).n;
   setMedal(id, m);
   addXp(gained);
+  // League points are awarded once per module per competition week; lifetime XP remains unchanged.
+  void awardLeagueXp(gained, 'module:' + weekId() + ':' + id).catch(error => console.warn('League score was not updated:', error));
   const fresh = quizBadges({ correct: right, total, secs, hour: new Date().getHours() }).filter(b => grant(b));
   fresh.push(...checkMeta());
   updatePill();
