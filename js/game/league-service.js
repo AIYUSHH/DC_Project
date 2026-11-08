@@ -7,7 +7,7 @@
 import { auth } from '../auth/firebase-client.js';
 import { db } from '../auth/firebase-client.js';
 import {
-  collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, where
+  collection, doc, getDoc, getDocs, limit, query, runTransaction, serverTimestamp, where
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { LEAGUES, LEAGUE_SIZE, nextLeague, rankMembers, weekId, previousWeekId } from './leagues.js';
 
@@ -49,13 +49,16 @@ export async function ensureLeagueMembership() {
       }
     }
 
-    const openQuery = query(batchesRef(currentWeek), where('tier', '==', tier), where('memberCount', '<', LEAGUE_SIZE), orderBy('memberCount'), limit(1));
-    const openSnap = await tx.get(openQuery);
-    const chosen = openSnap.docs[0];
+    // Query candidates before the transaction; the selected batch is re-read transactionally
+    // so concurrent joins retry rather than exceeding the 20-member cap.
+    const openQuery = query(batchesRef(currentWeek), where('tier', '==', tier), where('memberCount', '<', LEAGUE_SIZE), limit(10));
+    const openSnap = await getDocs(openQuery);
+    const chosen = openSnap.docs.find(item => Number(item.data().memberCount) < LEAGUE_SIZE);
     const targetRef = chosen ? chosen.ref : newBatchRef;
-    const target = chosen?.data() || { tier, memberCount: 0, members: {} };
+    const targetSnap = chosen ? await tx.get(targetRef) : null;
+    const target = targetSnap?.exists() ? targetSnap.data() : { tier, memberCount: 0, members: {} };
     const members = { ...(target.members || {}) };
-    if (!members[user.uid] && target.memberCount >= LEAGUE_SIZE) throw new Error('This batch is full. Please retry.');
+    if (!members[user.uid] && Object.keys(members).length >= LEAGUE_SIZE) throw new Error('This batch is full. Please retry.');
     members[user.uid] = members[user.uid] || {
       name: safeName(user), weeklyXp: 0, joinedAt: Date.now(), eventIds: []
     };
@@ -111,6 +114,7 @@ export async function getLeagueSnapshot() {
     weeklyXp: leaderboard.find(x => x.uid === user.uid)?.weeklyXp || 0,
     memberCount: Number(data.memberCount) || leaderboard.length,
     weekId: profile.weekId,
+    uid: user.uid,
   };
 }
 
