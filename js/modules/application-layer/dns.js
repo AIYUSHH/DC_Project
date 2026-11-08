@@ -370,37 +370,6 @@ regMod({
             const renderWorldMap = async (trace,host) => {
               const mapHost=host.querySelector('#dns-world-map'),listHost=host.querySelector('#dns-world-map-list');
               if(!mapHost||!listHost)return;
-              const candidates=[];
-              (trace.steps||[]).forEach((step,index)=>{
-                if(isPublicIp(step.server))candidates.push({ip:step.server,role:(({root:'Root server',tld:'TLD server',authoritative:'Authoritative server'})[step.stage]||'DNS server')+' · query '+(index+1)});
-                (step.glue||[]).forEach(record=>{
-                  if(['A','AAAA'].includes(String(record.type).toUpperCase())&&isPublicIp(record.data))candidates.push({ip:record.data,role:'DNS referral glue · '+record.name});
-                });
-              });
-              (trace.answers||[]).forEach(record=>{
-                if(['A','AAAA'].includes(String(record.type).toUpperCase())&&isPublicIp(record.data))candidates.push({ip:record.data,role:'Final answer · '+record.name});
-              });
-              const unique=[...new Map(candidates.map(x=>[x.ip,x])).values()].slice(0,30);
-              if(!unique.length){
-                mapHost.innerHTML='<div class="dns-world-map-message">No public IP addresses were exposed in this DNS trace. Private, hidden and hostname-only entries are not assigned locations.</div>';
-                listHost.innerHTML='';return;
-              }
-              mapHost.innerHTML='<div class="dns-world-map-message">Looking up approximate locations for '+unique.length+' public IP address(es)…</div>';
-              listHost.innerHTML='';
-              const results=await Promise.all(unique.map(async item=>{try{return {...item,geo:await locatePublicIp(item.ip)};}catch(error){return {...item,geo:null,error:error.message};}}));
-              if(!mapHost.isConnected)return;
-              const located=results.filter(x=>x.geo&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lon));
-              listHost.innerHTML=results.map(item=>'<div class="dns-world-map-row"><b>'+escapeHtml(item.ip)+'</b><span>'+escapeHtml(item.role)+'</span><small>'+(item.geo?[escapeHtml(item.geo.city),escapeHtml(item.geo.region),escapeHtml(item.geo.country)].filter(Boolean).join(', ')||'Approximate location unavailable':'Location unavailable'+(item.error?' · '+escapeHtml(item.error):''))+'</small></div>').join('');
-              if(!located.length){
-                mapHost.innerHTML='<div class="dns-world-map-message">Geolocation service did not return usable coordinates. The IP list is still shown below. Check the connection or try again later.</div>';
-                return;
-              }
-              const project=(lat,lon)=>({x:((lon+180)/360)*1000,y:((90-lat)/180)*500});
-              const dots=located.map((item,index)=>{
-                const p=project(item.geo.lat,item.geo.lon);
-                const title=escapeHtml(item.ip+' · '+[item.geo.city,item.geo.region,item.geo.country].filter(Boolean).join(', '));
-                return '<g class="dns-world-marker" tabindex="0" role="img" aria-label="'+title+'"><title>'+title+' · '+escapeHtml(item.role)+'</title><circle cx="'+p.x.toFixed(2)+'" cy="'+p.y.toFixed(2)+'" r="13" class="dns-world-marker-halo"/><circle cx="'+p.x.toFixed(2)+'" cy="'+p.y.toFixed(2)+'" r="5.5" class="dns-world-marker-dot"/><text x="'+(p.x+10).toFixed(2)+'" y="'+(p.y-10).toFixed(2)+'">'+(index+1)+'</text></g>';
-              }).join('');
               const continents =
                 '<path d="M75 105 L105 65 170 48 218 70 250 108 232 142 208 154 196 194 165 218 145 190 120 175 105 142 82 132Z"/>'+
                 '<path d="M230 225 L260 238 276 278 267 325 248 378 229 420 212 386 215 340 197 300 207 260Z"/>'+
@@ -409,7 +378,26 @@ regMod({
                 '<path d="M585 95 L642 62 714 68 760 94 824 85 892 112 927 151 901 184 850 179 824 208 778 194 749 225 710 203 676 183 640 168 608 143Z"/>'+
                 '<path d="M805 300 L850 281 892 295 916 324 900 354 864 367 830 348Z"/>'+
                 '<path d="M92 55 L130 36 174 43 191 59 162 75 117 73Z"/>';
-              mapHost.innerHTML='<svg class="dns-world-map-svg" viewBox="0 0 1000 500" role="img" aria-label="World map showing approximate geolocations of public IP addresses"><defs><pattern id="dns-map-grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M100 0H0V100" fill="none" class="dns-world-gridline"/></pattern></defs><rect width="1000" height="500" class="dns-world-ocean"/><rect width="1000" height="500" fill="url(#dns-map-grid)"/><g class="dns-world-continents">'+continents+'</g><g>'+dots+'</g></svg><div class="dns-world-map-legend">'+located.length+' approximate location(s) plotted · '+results.length+' public IP(s) checked</div>';
+              const baseSvg='<svg class="dns-world-map-svg" viewBox="0 0 1000 500" role="img" aria-label="World map showing approximate locations of public IP addresses"><rect width="1000" height="500" fill="#102039"/><g stroke="#526783" stroke-width="1" opacity=".45"><path d="M0 125H1000M0 250H1000M0 375H1000M200 0V500M400 0V500M600 0V500M800 0V500"/></g><g fill="#6d829b" stroke="#9aacc0" stroke-width="2" stroke-linejoin="round">'+continents+'</g><g id="dns-world-map-pins"></g></svg>';
+              mapHost.innerHTML=baseSvg+'<div class="dns-world-map-legend">World map · loading IP locations…</div>';
+              listHost.innerHTML='';
+              const candidates=[];
+              (trace.steps||[]).forEach((step,index)=>{
+                if(isPublicIp(step.server))candidates.push({ip:step.server,role:(({root:'Root server',tld:'TLD server',authoritative:'Authoritative server'})[step.stage]||'DNS server')+' · query '+(index+1)});
+                (step.glue||[]).forEach(record=>{if(['A','AAAA'].includes(String(record.type).toUpperCase())&&isPublicIp(record.data))candidates.push({ip:record.data,role:'DNS referral · '+record.name});});
+              });
+              (trace.answers||[]).forEach(record=>{if(['A','AAAA'].includes(String(record.type).toUpperCase())&&isPublicIp(record.data))candidates.push({ip:record.data,role:'Final answer · '+record.name});});
+              const unique=[...new Map(candidates.map(x=>[x.ip,x])).values()].slice(0,30);
+              if(!unique.length){mapHost.querySelector('.dns-world-map-legend').textContent='World map shown · no public IP addresses were available to plot.';return;}
+              listHost.innerHTML=unique.map(item=>'<div class="dns-world-map-row"><b>'+escapeHtml(item.ip)+'</b><span>'+escapeHtml(item.role)+'</span><small>Looking up approximate location…</small></div>').join('');
+              const results=await Promise.all(unique.map(async item=>{try{return {...item,geo:await locatePublicIp(item.ip)};}catch(error){return {...item,geo:null,error:error.message};}}));
+              if(!mapHost.isConnected)return;
+              const located=results.filter(x=>x.geo&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lon));
+              listHost.innerHTML=results.map(item=>'<div class="dns-world-map-row"><b>'+escapeHtml(item.ip)+'</b><span>'+escapeHtml(item.role)+'</span><small>'+(item.geo?[item.geo.city,item.geo.region,item.geo.country].filter(Boolean).map(escapeHtml).join(', ')||'Approximate location':'Location unavailable')+'</small></div>').join('');
+              const pins=mapHost.querySelector('#dns-world-map-pins');
+              const project=(lat,lon)=>({x:((lon+180)/360)*1000,y:((90-lat)/180)*500});
+              pins.innerHTML=located.map((item,index)=>{const p=project(item.geo.lat,item.geo.lon),title=escapeHtml(item.ip+' · '+[item.geo.city,item.geo.region,item.geo.country].filter(Boolean).join(', '));return '<g><title>'+title+' · '+escapeHtml(item.role)+'</title><circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="13" fill="#38bdf8" opacity=".25"/><circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="5.5" fill="#38bdf8" stroke="#071426" stroke-width="2"/><text x="'+(p.x+10).toFixed(1)+'" y="'+(p.y-10).toFixed(1)+'" fill="#fff" font-size="13" font-weight="700">'+(index+1)+'</text></g>';}).join('');
+              mapHost.querySelector('.dns-world-map-legend').textContent=located.length+' approximate IP location(s) plotted · '+results.length+' public IP(s) checked'+(located.length?'':' · geolocation service unavailable; base map remains visible');
             };
             const run = async () => {
               const name=$('#live-dns-name',p).value.trim(), type=$('#live-dns-type',p).value;
