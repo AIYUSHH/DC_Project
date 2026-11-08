@@ -38,6 +38,25 @@ regMod({
     let autoTimer=null, refreshBusy=false, demoMode=false, neighbourQuery='';
     root.innerHTML=`
       <section class="lni">
+        <div class="lni-consent-backdrop" id="lni-consent" hidden>
+          <section class="lni-consent-dialog" role="dialog" aria-modal="true" aria-labelledby="lni-consent-title" aria-describedby="lni-consent-description">
+            <div class="lni-consent-symbol" aria-hidden="true">⌁</div>
+            <div class="lni-kicker">YOUR DEVICE · YOUR CHOICE</div>
+            <h2 id="lni-consent-title">Allow BitSecure to inspect this device?</h2>
+            <p id="lni-consent-description">With your permission, BitSecure will connect to its optional local helper to read network information from this computer. This helps you understand how your device is connected.</p>
+            <div class="lni-consent-list">
+              <div><b>Information accessed</b><span>Local IP addresses, network adapters, default gateway, Wi-Fi details and cached network neighbours.</span></div>
+              <div><b>What BitSecure will do</b><span>Read and display the information only. It will not scan other devices, change network settings or capture traffic.</span></div>
+              <div><b>Where it goes</b><span>The helper is contacted on this computer (127.0.0.1). Network details are not intentionally sent to a BitSecure server.</span></div>
+            </div>
+            <p class="lni-consent-footnote">You can choose “Not now” and still explore the interactive sample. Allowing access does not install software; if the helper is not installed and running, we’ll explain the next step.</p>
+            <div class="lni-consent-actions">
+              <button type="button" class="btn ghost" id="lni-deny">Not now</button>
+              <button type="button" class="btn" id="lni-allow">Allow access</button>
+            </div>
+          </section>
+        </div>
+
         <header class="lni-head">
           <div><div class="lni-kicker">NETWORK LAYER <span>•</span> LIVE INVENTORY</div>
             <h2>Network interface explorer</h2>
@@ -118,7 +137,7 @@ regMod({
     async function refresh(){
       if(refreshBusy)return;refreshBusy=true;controller?.abort();controller=new AbortController();el('#lni-refresh').disabled=true;demoMode=false;status('Reading this device’s network configuration…','loading');
       try{const response=await fetch(ENDPOINT,{cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(!data.ok)throw new Error(data.error||'Agent error');render(data);status('Connected · '+data.platform+' · live OS data','ok');el('#lni-source').textContent='Updated '+new Date(data.collected_at||Date.now()).toLocaleTimeString();}
-      catch(error){if(error.name==='AbortError')return;status('Local helper unavailable. You can still explore demo mode.','error');if(!snapshot)el('#lni-welcome').hidden=false;}
+      catch(error){if(error.name==='AbortError')return;status('BitSecure could not connect to the local helper.','error');if(!snapshot){el('#lni-welcome').hidden=false;el('#lni-welcome').querySelector('h3').textContent='One more step: start the BitSecure Network Agent';el('#lni-welcome').querySelector('p').textContent='Your permission is saved, but the local agent is not running. The agent is a small companion app that reads network details on this computer. It must be installed and started once; a website cannot launch it by itself.';}}
       finally{refreshBusy=false;el('#lni-refresh').disabled=false;}
     }
     root.addEventListener('click',event=>{
@@ -130,6 +149,22 @@ regMod({
     });
     el('#lni-refresh').addEventListener('click',refresh);
     el('#lni-demo').addEventListener('click',renderDemo);
+    const consentKey='bitsecure-live-inventory-consent-v1';
+    const consent=()=>{try{return localStorage.getItem(consentKey)==='granted';}catch{return false;}};
+    const showConsent=()=>{el('#lni-consent').hidden=false;el('#lni-allow').focus();};
+    const closeConsent=()=>{el('#lni-consent').hidden=true;};
+    el('#lni-allow').addEventListener('click',()=>{
+      try{localStorage.setItem(consentKey,'granted');}catch{}
+      closeConsent();
+      refresh();
+    });
+    el('#lni-deny').addEventListener('click',()=>{
+      try{localStorage.setItem(consentKey,'denied');}catch{}
+      closeConsent();
+      status('Access not granted · demo mode is still available','');
+      el('#lni-welcome').hidden=false;
+    });
+    if(consent()) refresh(); else showConsent();
     el('#lni-copy').addEventListener('click',e=>copyValue('python3 tools/network-agent/network_agent.py',e.currentTarget));
     el('#lni-auto').addEventListener('click',e=>{if(autoTimer){clearInterval(autoTimer);autoTimer=null;e.currentTarget.textContent='Auto refresh: Off';e.currentTarget.setAttribute('aria-pressed','false');}else{autoTimer=setInterval(()=>{if(!document.hidden&&!demoMode)refresh();},10000);e.currentTarget.textContent='Auto refresh: 10s';e.currentTarget.setAttribute('aria-pressed','true');refresh();}});
     el('#lni-filter').addEventListener('input',e=>{neighbourQuery=e.target.value;renderNeighbours();});
