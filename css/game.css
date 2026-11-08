@@ -119,3 +119,27 @@ a.gcard:hover { transform: translateY(-3px); }
 /* ---- make the original simulators match the new look ---- */
 .panel, .cols2 > .panel { border: var(--gborder); border-radius: var(--radius); }
 .gstage.play .head, .gstage.play .foot { display: none; }
+
+/* ---- weekly leagues and exclusive profile decorations ---- */
+.league-hero { background: linear-gradient(135deg, #f6e8ff, #d9ccff); color: #2a2438; }
+.league-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; margin: .8rem 0; }
+.league-stats span { display: flex; flex-direction: column; padding: .65rem; border-radius: 12px; background: rgba(255,255,255,.55); }
+.league-stats strong { font-size: 1.3rem; }
+.league-stats small { font-size: .78rem; }
+.league-zones { display: flex; flex-wrap: wrap; gap: .5rem; }
+.league-zones span { border-radius: 99px; padding: .35rem .7rem; font-weight: 800; font-size: .8rem; }
+.league-promo { background: #d4f5cf; color: #145d3c; }
+.league-safe { background: #d9eaff; color: #194d80; }
+.league-demo { background: #ffe0e0; color: #8a2633; }
+.league-board { padding: .5rem 1rem; }
+.league-board ol { margin: 0; padding-left: 0; list-style: none; }
+.league-board li { display: grid; grid-template-columns: 3rem minmax(0,1fr) auto; align-items: center; gap: .65rem; padding: .7rem .3rem; border-bottom: 1px solid rgba(42,36,56,.14); }
+.league-board li:last-child { border-bottom: 0; }
+.league-board li.is-you { background: rgba(138,92,255,.13); border-radius: 10px; padding-inline: .6rem; }
+.league-rank { font-weight: 900; }
+.league-board li b { overflow-wrap: anywhere; }
+.league-decoration { border-color: #8a5cff; }
+@media (max-width: 520px) {
+  .league-stats { grid-template-columns: 1fr; }
+  .league-board li { grid-template-columns: 2.2rem minmax(0,1fr) auto; gap: .35rem; font-size: .9rem; }
+}
